@@ -1,7 +1,7 @@
 #set( $dollar = '$' )
 #set( $hash = '#' )
 ${hash}!/usr/bin/env bash
-${hash} Sourced by the official MySQL entrypoint on an EMPTY data volume only.
+${hash} Run by the official MySQL entrypoint on an EMPTY data volume only.
 ${hash} Validate before interpolating credentials into SQL.
 for key in NACOS_DB_PASSWORD XXL_JOB_DB_PASSWORD XXL_JOB_ADMIN_PASSWORD; do
   value="${dollar}{!key}"
@@ -10,7 +10,8 @@ for key in NACOS_DB_PASSWORD XXL_JOB_DB_PASSWORD XXL_JOB_ADMIN_PASSWORD; do
     exit 1
   fi
 done
-docker_process_sql <<EOSQL
+${hash} Works whether a host bind mount makes the script executable or sourced.
+MYSQL_PWD="${dollar}MYSQL_ROOT_PASSWORD" mysql --protocol=socket -uroot <<EOSQL
 CREATE DATABASE IF NOT EXISTS nacos_config CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
 CREATE DATABASE IF NOT EXISTS xxl_job CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 CREATE USER 'nacos'@'%' IDENTIFIED BY '${dollar}NACOS_DB_PASSWORD';

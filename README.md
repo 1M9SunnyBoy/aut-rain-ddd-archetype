@@ -87,7 +87,9 @@ order-system/
 │   │   ├── 04-开发文档/
 │   │   └── 05-部署文档/
 │   ├── dev-ops/
-│   └── dev-script/deployment/
+│   │   ├── app/                   # sh/、psw/ 下的 build/start/stop
+│   │   └── environment/           # 中间件、Nginx、配置和 SQL
+│   └── dev-script/                # 预留项目开发辅助脚本
 ├── .env.example
 ├── .editorconfig
 ├── .gitattributes
@@ -106,9 +108,9 @@ Maven 聚合入口保持在 `app-backend/pom.xml`。Archetype 生成过程中需
 - Java 21 / Spring Boot 3.5.11 六模块骨架，不使用 Lombok；提供 `/api/v1/ping` 和 Actuator 健康接口。
 - React / TypeScript / Ant Design，Node.js 22.22.0、pnpm 11.0.8，包含锁文件、ESLint、Vitest 和起始页面。
 - MySQL / Flyway，初始 V1 为无业务表的基线标记；数据库不使用物理外键，关联由后端逻辑与唯一约束保证。
-- 中间件参考 XFG 的 app/environment 分层，提供 MySQL、Redis、Nacos、RocketMQ NameServer/Broker、XXL-Job Compose 与初始化 SQL。
-- 分层部署工具：检查、准备/打包/上传、首次与单端/全量迭代、健康检查、监控和卸载。
-- 后端 `/opt/<artifactId>`、前端 `/var/www/<artifactId>`，独立 Compose 项目及数据库卷；MySQL 默认 3306、后端 8080、前端开发端口 5137，生产 Nginx 默认对外端口 80，可由 httpPort 指定。
+- 中间件参考 XFG 的 app/environment 分层，提供 MySQL、Redis、Nacos、RocketMQ NameServer/Broker、XXL-Job Compose 与初始化 SQL。独立开发编排使用 MySQL 8.0.32、Redis 6.2、Nacos 3.0.3、RocketMQ 5.1.0，并附带 phpMyAdmin、Redis Commander、RocketMQ Dashboard；Windows 使用 Docker Desktop Linux containers 和 PowerShell，生成时将容器 Shell 脚本统一为 LF。入口和端口见生成项目的 docs/dev-ops/README.md。
+- 简单应用脚本：docs/dev-ops/app/sh 与 psw 提供 build/start/stop；中间件单独管理。
+- 前后端分别构建为镜像，独立 Compose 项目及数据库卷；开发 MySQL 默认 13306、后端 8080、前端开发端口 5137，生产 Nginx 默认对外端口 80，可由 httpPort 指定。
 - 开发规范、数据库设计、部署步骤和维护文档目录。
 
 第一版没有包含具体业务、RBAC、登录或数据库驱动页面运行目录；本版重点提供通用 Archetype 的生成与交付链路。
@@ -119,7 +121,7 @@ Maven 聚合入口保持在 `app-backend/pom.xml`。Archetype 生成过程中需
 python scripts/verify.py
 ```
 
-需要 Python 3.12+ 和上述 Java/Node 工具链。该命令安装本地 Archetype、生成多组参数的项目，检查目录和模板变量，构建后端、执行前端类型/ESLint/Vitest/生产构建、运行部署工具测试并校验发布包。结果保留在 `target/verification-*/`，便于查看。
+需要 Python 3.12+ 和上述 Java/Node 工具链。该命令安装本地 Archetype、生成多组参数的项目，检查目录和模板变量，构建后端、执行前端类型/ESLint/Vitest/生产构建、校验 Compose 和应用脚本行为（使用模拟工具，不启动服务）。结果保留在 `target/verification-*/`，便于查看。
 
 使用 `python scripts/verify.py --backend-only` 可只验证生成参数、项目结构及后端构建；包含命令行默认值、IDEA 原样传入表达式、裸 package 参数及非法项目名的回归检查。可用 `--maven "<IDEA 安装目录>/plugins/maven-plugin/lib/maven3/bin/mvn.cmd"` 指定 IDEA 自带 Maven。
 

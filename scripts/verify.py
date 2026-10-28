@@ -6,8 +6,6 @@ import re
 import shutil
 import subprocess
 import sys
-import tempfile
-import tarfile
 import uuid
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -33,9 +31,12 @@ def inspect(project, artifact, database, port):
     java_path = 'src/main/java/' + package.replace('.', '/')
     expected = ['app-backend/pom.xml', '.gitignore', '.editorconfig', '.env.example', '.gitattributes',
                 'README.md', 'web/package.json', 'web/pnpm-lock.yaml', 'docs/dev-ops/environment/docker-compose.yml',
-                'docs/dev-script/deployment/deploy/first-deploy.sh']
+                'docs/dev-ops/app/sh/build.sh', 'docs/dev-ops/app/sh/start.sh', 'docs/dev-ops/app/sh/stop.sh',
+                'docs/dev-ops/app/psw/build.ps1', 'docs/dev-ops/app/psw/start.ps1', 'docs/dev-ops/app/psw/stop.ps1',
+                'docs/dev-ops/app/.env.example']
     for name in expected:
         assert (project / name).is_file(), name
+    assert not (project / 'docs/dev-script/deployment').exists()
     assert not (project / 'pom.xml').exists(), 'Backend reactor must remain under app-backend/'
     assert (project / 'app-backend' / (artifact + '-app') / 'Dockerfile').is_file()
     assert not (project / 'docs/dev-ops/app/Dockerfile').exists()
@@ -102,7 +103,9 @@ def inspect(project, artifact, database, port):
     app_pom = project / 'app-backend' / (artifact + '-app') / 'pom.xml'
     assert '<mainClass>' + package + '.Application</mainClass>' in app_pom.read_text()
     config = resources / 'application-dev.yml'
-    assert '${APP_DB_PASSWORD}' in config.read_text()
+    assert '${APP_DB_PASSWORD:123456}' in config.read_text()
+    assert '${APP_DB_USERNAME:root}' in config.read_text()
+    assert '127.0.0.1:13306/' in config.read_text()
     assert database in config.read_text()
     compose = (project / 'docs/dev-ops/app/docker-compose.yml').read_text(encoding='utf-8')
     assert '${MYSQL_PASSWORD:?Configure MYSQL_PASSWORD}' in compose
@@ -125,12 +128,12 @@ def inspect(project, artifact, database, port):
 def check_compose(ops):
     """Resolve Compose without contacting Docker daemon or starting services."""
     env = {key: value for key, value in os.environ.items()
-           if not key.startswith('COMPOSE_') and key not in ('APP_RELEASE_ID', 'WEB_RELEASE_ID')}
-    keys = ('MYSQL_PASSWORD', 'MYSQL_ROOT_PASSWORD', 'REDIS_PASSWORD', 'NACOS_DB_PASSWORD',
+           if not key.startswith('COMPOSE_') and key != 'IMAGE_TAG'}
+    keys = ('MYSQL_PASSWORD', 'MYSQL_ROOT_PASSWORD', 'REDIS_PASSWORD', 'REDIS_ADMIN_PASSWORD', 'NACOS_DB_PASSWORD',
             'NACOS_AUTH_IDENTITY_VALUE', 'XXL_JOB_DB_PASSWORD', 'XXL_JOB_ACCESS_TOKEN', 'XXL_JOB_ADMIN_PASSWORD')
     env.update({key: 'VerificationOnly_' + key + '_12345678901234567890' for key in keys})
     env.update(NACOS_AUTH_TOKEN='MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzg5YWJjZGVm',
-               RELEASE_ID='verification', WEB_ROOT=str(ops.resolve()), HTTP_BIND='0.0.0.0', HTTP_PORT='80',
+               IMAGE_TAG='verification', HTTP_BIND='0.0.0.0', HTTP_PORT='80',
                MYSQL_PORT='3306', BROKER_ADVERTISE_HOST='127.0.0.1')
     prefix = [tool('docker'), 'compose', '--env-file', os.devnull,
               '--project-directory', str((ops / 'environment').resolve()),
@@ -141,10 +144,24 @@ def check_compose(ops):
         return json.loads(result.stdout)
     prod = config(['-f', str((ops / 'app/docker-compose.yml').resolve())])
     expected = {'mysql', 'redis', 'nacos', 'rocketmq-namesrv', 'rocketmq-broker', 'xxl-job-admin'}
+    baseline = {'mysql': 'mysql:8.0.32', 'redis': 'redis:6.2',
+                'nacos': 'nacos/nacos-server:v3.0.3',
+                'rocketmq-namesrv': 'apache/rocketmq:5.1.0',
+                'rocketmq-broker': 'apache/rocketmq:5.1.0',
+                'xxl-job-admin': 'xuxueli/xxl-job-admin:2.4.1'}
     assert set(prod['services']) == expected | {'app', 'nginx'}
     for name in expected:
+        assert prod['services'][name]['image'] == baseline[name], name
         assert not prod['services'][name].get('ports'), name
         assert 'healthcheck' in prod['services'][name], name
+    nacos = prod['services']['nacos']
+    assert nacos['environment']['SPRING_DATASOURCE_PLATFORM'] == 'mysql'
+    for key in ('NACOS_AUTH_ENABLE', 'NACOS_AUTH_ADMIN_ENABLE', 'NACOS_AUTH_CONSOLE_ENABLE'):
+        assert nacos['environment'][key] == 'true'
+    assert nacos['healthcheck']['test'][-1].endswith('/nacos/v3/admin/core/state/readiness')
+    schema = (ops / 'environment/sql/nacos.sql').read_text(encoding='utf-8')
+    assert 'CREATE TABLE `config_info_gray`' in schema
+    assert '`publish_type`' in schema and '`ext_info`' in schema
     assert prod['services']['nginx']['ports'][0]['published'] == '80'
     assert prod['services']['nginx']['ports'][0]['target'] == 80
     for service in prod['services'].values():
@@ -153,24 +170,102 @@ def check_compose(ops):
                 assert Path(mount['source']).exists(), mount
         if 'build' in service:
             build = service['build']
-            assert Path(build['context']).resolve() == ops.resolve()
-            dockerfile = Path(build['context']) / build['dockerfile']
-            if build['dockerfile'] == 'app/Dockerfile' and (ops.parents[1] / 'app-backend').is_dir():
-                candidates = list((ops.parents[1] / 'app-backend').glob('*-app/Dockerfile'))
-                assert len(candidates) == 1, candidates
-                dockerfile = candidates[0]
+            project = ops.parents[1]
+            context = Path(build['context']).resolve()
+            dockerfile = context / build['dockerfile']
             assert dockerfile.is_file(), dockerfile
-            if build['dockerfile'] == 'app/Dockerfile':
-                assert build['args']['JAR_FILE'] == 'app.jar'
+            if service['image'].split(':')[0].endswith('/app'):
+                assert context.parent == project / 'app-backend'
+                assert context.name.endswith('-app')
+                assert (context / '.dockerignore').is_file()
+            else:
+                assert context == project
+                assert build['dockerfile'] == 'docs/dev-ops/environment/nginx/Dockerfile'
+                assert 'COPY web/dist/' in dockerfile.read_text(encoding='utf-8')
+                assert dockerfile.with_name('Dockerfile.dockerignore').is_file()
+    assert not prod['services']['nginx'].get('volumes'), 'Frontend assets must be in the image'
     for sql in ('nacos.sql', 'xxl-job.sql'):
         assert not re.search(r'FOREIGN\s+KEY', (ops / 'environment/sql' / sql).read_text(encoding='utf-8'), re.I)
     dev_file = ops / 'environment/docker-compose.dev.yml'
     if dev_file.exists():
-        dev = config(['-f', str(dev_file.resolve())])
-        assert set(dev['services']) == expected
+        # Development is standalone: it must not inherit production image tags or volumes.
+        dev_prefix = prefix[:-2] + ['-f', str(dev_file.resolve())]
+        dev_env = {key: value for key, value in env.items()
+                   if key not in keys and key not in ('NACOS_AUTH_TOKEN', 'BROKER_ADVERTISE_HOST',
+                       'MYSQL_PORT', 'REDIS_PORT', 'NACOS_CONSOLE_PORT', 'XXL_JOB_PORT',
+                       'PHPMYADMIN_PORT', 'REDIS_ADMIN_PORT', 'ROCKETMQ_DASHBOARD_PORT')}
+        result = subprocess.run(dev_prefix + ['config', '--format', 'json'], env=dev_env,
+                                check=True, capture_output=True, text=True)
+        dev = json.loads(result.stdout)
+        assert dev['services']['mysql']['environment']['MYSQL_ROOT_PASSWORD'] == '123456'
+        assert dev['services']['mysql']['environment']['MYSQL_ROOT_HOST'] == '%'
+        assert dev['services']['mysql']['environment']['XXL_JOB_ADMIN_PASSWORD'] == '123456'
+        assert dev['services']['xxl-job-admin']['environment']['SPRING_DATASOURCE_PASSWORD'] == '123456'
+        assert dev['services']['xxl-job-admin']['environment']['XXL_JOB_ACCESS_TOKEN'] == 'default_token'
+        redis = dev['services']['redis']
+        assert 'REDIS_PASSWORD' not in redis.get('environment', {})
+        assert '--requirepass' not in redis['command']
+        assert redis['command'][-2:] == ['--protected-mode', 'no']
+        assert redis['healthcheck']['test'] == ['CMD', 'redis-cli', 'ping']
+        assert 'REDIS_PASSWORD' not in dev['services']['redis-admin']['environment']
+        assert dev['services']['redis-admin']['environment']['HTTP_PASSWORD'] == 'admin'
+        versions = {'mysql': 'mysql:8.0.32', 'redis': 'redis:6.2',
+                    'nacos': 'nacos/nacos-server:v3.0.3',
+                    'rocketmq-namesrv': 'apache/rocketmq:5.1.0',
+                    'rocketmq-broker': 'apache/rocketmq:5.1.0',
+                    'xxl-job-admin': 'xuxueli/xxl-job-admin:2.4.1',
+                    'phpmyadmin': 'phpmyadmin:5.2.1',
+                    'redis-admin': 'spryker/redis-commander:0.8.0',
+                    'rocketmq-dashboard': 'apacherocketmq/rocketmq-dashboard:1.0.0'}
+        assert set(dev['services']) == set(versions)
+        for name, image in versions.items():
+            assert dev['services'][name]['image'] == image, name
+        for name in expected:
+            assert dev['services'][name]['image'] == prod['services'][name]['image'], name
+        published = []
         for service in dev['services'].values():
             assert all(port['host_ip'] == '127.0.0.1' for port in service.get('ports', []))
+            published.extend(port['published'] for port in service.get('ports', []))
+            for mount in service.get('volumes', []):
+                if mount['type'] == 'bind':
+                    assert Path(mount['source']).is_file(), mount
+                    assert mount['read_only'], mount
+        assert len(published) == len(set(published)), 'Development port collision'
+        assert all(1 <= int(port) <= 65535 for port in published)
+        expected_ports = {
+            'mysql': {(13306, 3306)}, 'redis': {(16379, 6379)},
+            'nacos': {(18848, 8848), (19848, 9848), (19849, 9849), (18080, 8080)},
+            'xxl-job-admin': {(19090, 9090)}, 'phpmyadmin': {(18899, 80)},
+            'redis-admin': {(18081, 8081)}, 'rocketmq-namesrv': {(19876, 9876)},
+            'rocketmq-broker': {(20909, 20909), (20911, 20911), (20912, 20912), (18082, 8080)},
+            'rocketmq-dashboard': set(),
+        }
+        for name, ports in expected_ports.items():
+            actual = {(int(p['published']), p['target']) for p in dev['services'][name].get('ports', [])}
+            assert actual == ports, (name, actual)
+        broker_command = ' '.join(dev['services']['rocketmq-broker']['command'])
+        assert 'listenPort=20911' in broker_command and 'haListenPort=20912' in broker_command
+        assert '8080' not in published and '5137' not in published
+        assert dev['services']['nacos']['environment']['MODE'] == 'standalone'
+        assert 'SPRING_DATASOURCE_PLATFORM' not in dev['services']['nacos']['environment']
+        assert dev['services']['rocketmq-dashboard']['network_mode'] == 'service:rocketmq-broker'
         assert dev['services']['rocketmq-broker']['environment']['BROKER_ADVERTISE_HOST'] == '127.0.0.1'
+        assert dev['name'] != prod['name']
+        assert not ({volume['name'] for volume in dev['volumes'].values()} &
+                    {volume['name'] for volume in prod['volumes'].values()})
+        init = ops / 'environment/mysql/initdb/10-development.sh'
+        assert b'\r' not in init.read_bytes(), 'Container init script requires LF on Windows too'
+        assert 'nacos.sql' not in init.read_text(encoding='utf-8')
+        # Only the development file is passed, including when local default ports are occupied.
+        result = subprocess.run(dev_prefix + ['config', '--format', 'json'],
+                                env={**dev_env, 'MYSQL_PORT': '23306', 'NACOS_CONSOLE_PORT': '28080',
+                                     'MYSQL_ROOT_PASSWORD': 'OverrideForVerification'},
+                                check=True, capture_output=True, text=True)
+        custom = json.loads(result.stdout)
+        assert custom['services']['mysql']['ports'][0]['published'] == '23306'
+        assert custom['services']['mysql']['environment']['MYSQL_ROOT_PASSWORD'] == 'OverrideForVerification'
+        assert any(p['published'] == '28080' and p['target'] == 8080
+                   for p in custom['services']['nacos']['ports'])
     assert prod['services']['rocketmq-broker']['environment']['BROKER_ADVERTISE_HOST'] == 'rocketmq-broker'
     print('Compose services, networks, ports, bind paths and build paths passed (no daemon).', flush=True)
 
@@ -209,7 +304,7 @@ def check_architecture_boundaries(project, artifact):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--backend-only', action='store_true', help='Validate generation and backend without frontend/delivery builds')
+    parser.add_argument('--backend-only', action='store_true', help='Validate generation and backend without frontend builds')
     parser.add_argument('--maven', help='Maven executable, e.g. the Maven bundled with IDEA')
     parser.add_argument('--settings', help='Maven settings.xml used by the IDE')
     parser.add_argument('--local-repository', help='Maven local repository used by the IDE')
@@ -253,6 +348,8 @@ def main():
         assert message in result.stdout + result.stderr, result.stdout + result.stderr
         print('Rejected invalid generation parameters: ' + artifact, flush=True)
     project = output / 'sample-service'
+    from check_app_scripts import check_app_scripts
+    check_app_scripts(project)
     run(maven + ['-f', 'app-backend/pom.xml', 'clean', 'package'], project)
     run(maven + ['-f', 'app-backend/pom.xml', 'clean', 'package'], output / 'idea-literal')
     if args.backend_only:
@@ -263,15 +360,6 @@ def main():
     run([corepack, 'pnpm', 'install', '--frozen-lockfile'], project / 'web')
     for task in ('typecheck', 'lint', 'test', 'build'):
         run([corepack, 'pnpm', task], project / 'web')
-    run([sys.executable, '-m', 'unittest', 'discover', '-s', 'docs/dev-script/deployment/tests', '-p', 'test_*.py'], project)
-    code = "import sys; sys.path.insert(0, 'docs/dev-script/deployment/prepare'); import build_upload; p=build_upload.pack(); print(build_upload.verify_archive(p))"
-    run([sys.executable, '-c', code], project)
-    package = max((project / '.runtime/delivery').glob('*.tar.gz'), key=lambda p: p.stat().st_mtime)
-    with tempfile.TemporaryDirectory() as temp:
-        with tarfile.open(package) as archive:
-            archive.extractall(temp, filter='data')
-        release = next(Path(temp).iterdir())
-        check_compose(release)
     print('PASSED. Generated examples retained at: ' + str(output))
     print('No application, database, Docker service or deployment was started.')
 

@@ -1,7 +1,7 @@
 #set( $dollar = '$' )
 #set( $hash = '#' )
-${hash} 应用部署：与 environment/docker-compose.yml 合并使用，构建上下文为发布包根目录。
-${hash} 发布脚本会提供 RELEASE_ID；不要单独运行本文件或叠加 environment/docker-compose.dev.yml。
+${hash} 应用部署：与 environment/docker-compose.yml 合并使用，相对路径以 environment 目录为基准。
+${hash} 使用 app/sh 或 app/psw 中的 build/start/stop；不要叠加开发 Compose。
 name: ${artifactId}
 
 x-logging: &logging
@@ -12,12 +12,10 @@ x-logging: &logging
 
 services:
   app:
-    image: ${artifactId}/app:${dollar}{APP_RELEASE_ID:-${dollar}{RELEASE_ID:?Use deploy-server.sh}}
+    image: ${artifactId}/app:${dollar}{IMAGE_TAG:-latest}
     build:
-      context: ..
-      dockerfile: app/Dockerfile
-      args:
-        JAR_FILE: app.jar
+      context: ../../../app-backend/${artifactId}-app
+      dockerfile: Dockerfile
     restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: prod
@@ -47,17 +45,10 @@ services:
     logging: *logging
 
   nginx:
-    image: ${artifactId}/web:${dollar}{WEB_RELEASE_ID:-${dollar}{RELEASE_ID:?Use deploy-server.sh}}
+    image: ${artifactId}/web:${dollar}{IMAGE_TAG:-latest}
     build:
-      context: ..
-      dockerfile: environment/nginx/Dockerfile
-    volumes:
-      - type: bind
-        source: ${dollar}{WEB_ROOT:?Configure WEB_ROOT}
-        target: /usr/share/nginx/html
-        read_only: true
-        bind:
-          create_host_path: false
+      context: ../../..
+      dockerfile: docs/dev-ops/environment/nginx/Dockerfile
     restart: unless-stopped
     ports:
       - "${dollar}{HTTP_BIND:-0.0.0.0}:${dollar}{HTTP_PORT:-${httpPort}}:80"

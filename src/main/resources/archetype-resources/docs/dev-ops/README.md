@@ -2,53 +2,89 @@
 #set( $hash = '#' )
 ${hash} 运维配置
 
-参考 XFG 的 app/environment 分层：app 放后端应用，environment 放 Nginx、中间件及配置。脚本保持在 docs/dev-script/deployment；模板生成不会启动服务。
+参考 XFG 的 app/environment 分层：app 放后端应用，environment 放 Nginx、中间件及配置。应用脚本位于 app/sh 和 app/psw；模板生成不会启动服务。
 
 | 文件 | 用途 |
 | --- | --- |
 | app/docker-compose.yml | 生产 Java app 和 Nginx；与 environment/docker-compose.yml 合并 |
-| ../../app-backend/${artifactId}-app/Dockerfile | 后端模块维护镜像定义；打包时复制到发布包 app/Dockerfile |
+| ../../app-backend/${artifactId}-app/Dockerfile | 后端模块维护镜像定义，直接读取模块 target JAR |
 | environment/nginx/Dockerfile、conf.d/default.conf | Nginx 镜像、API 同源代理及 SPA 路由 |
 | environment/docker-compose.yml | 全部中间件的生产基础定义，不发布宿主机端口 |
-| environment/docker-compose.dev.yml | 开发端口覆盖层，绑定 127.0.0.1，项目名 ${artifactId}-dev |
-| environment/.env.example | 开发变量示例，复制为 .env 后填入独立随机凭据 |
-| environment/mysql/compose.yaml、conf.d/my.cnf | MySQL 服务定义及字符集配置 |
-| environment/mysql/initdb/10-middleware.sh | 空卷首次建中间件库、用户、导入 SQL、初始化 XXL-Job 管理员 |
+| environment/docker-compose.dev.yml | 独立开发环境完整编排，绑定 127.0.0.1，项目名 ${artifactId}-dev；不与生产文件叠加 |
+| environment/.env.example | 可选开发变量覆盖，内置默认账号；无需复制即可使用 |
+| environment/mysql/compose.yaml、conf.d/my.cnf | 生产 MySQL 服务定义及字符集配置 |
+| environment/mysql/initdb/10-middleware.sh | 生产空卷首次建中间件库、用户、导入 SQL、初始化 XXL-Job 管理员 |
+| environment/mysql/initdb/10-development.sh | 开发空卷仅初始化 XXL-Job；Nacos 使用独立 Derby 数据卷 |
 | environment/sql/nacos.sql、xxl-job.sql | 与镜像版本匹配的中间件表结构 |
-| environment/redis/redis.conf | Redis AOF、监听及保护模式，密码由环境变量传入 |
+| environment/redis/redis.conf | Redis AOF、监听及保护模式；开发无密码，生产通过环境变量启用密码 |
 | environment/rocketmq/broker.conf | Broker 存储、Topic 策略；广播地址由 Compose 注入 |
 | environment/nacos/README.md、xxl-job/README.md | 初始化与连接说明 |
-| .dockerignore | 镜像构建白名单 |
+| app/sh、app/psw | 应用 build/start/stop 脚本 |
+| app/.env.example | 生产变量示例 |
+| environment/nginx/Dockerfile.dockerignore | 前端镜像构建白名单 |
 
-${hash}${hash} 本地开发
+${hash}${hash} Windows 本地开发
 
-在项目根目录复制 environment/.env.example 为同目录 .env。按示例生成不同的密码和 Base64 Nacos token，不提交 .env。以下命令供需要启动时手动执行：
+安装 Docker Desktop 并切换为 Linux containers，使用 Docker Compose V2（docker compose）。所有宿主机命令都在 PowerShell 执行，无需打开 WSL 终端。Compose 中的 sh/bash 是 Linux 容器内部命令。
+
+开发环境内置默认凭据，在生成的项目根目录按需执行，不需要先创建 .env：
 
 ```powershell
-docker compose --env-file docs/dev-ops/environment/.env -f docs/dev-ops/environment/docker-compose.yml -f docs/dev-ops/environment/docker-compose.dev.yml config --quiet
-docker compose --env-file docs/dev-ops/environment/.env -f docs/dev-ops/environment/docker-compose.yml -f docs/dev-ops/environment/docker-compose.dev.yml up -d --wait
-docker compose --env-file docs/dev-ops/environment/.env -f docs/dev-ops/environment/docker-compose.yml -f docs/dev-ops/environment/docker-compose.dev.yml ps
+docker compose -f docs/dev-ops/environment/docker-compose.dev.yml config --quiet
+docker compose -f docs/dev-ops/environment/docker-compose.dev.yml up -d --wait
+docker compose -f docs/dev-ops/environment/docker-compose.dev.yml ps
+docker compose -f docs/dev-ops/environment/docker-compose.dev.yml stop
 ```
 
-停止使用相同参数执行 stop；down 保留卷，down -v 删除该项目全部中间件数据，仅在明确清空时使用。up 末尾可指定 mysql redis 等服务；Nacos 和 XXL-Job 的 MySQL 依赖自动启动。
+| 组件 | 默认账号 | 默认密码 / 说明 |
+| --- | --- | --- |
+| MySQL / phpMyAdmin | root | 123456 |
+| 业务库备用用户 | ${databaseName} | 123456 |
+| Redis | 无 | 无密码 |
+| Redis Commander | admin | admin（仅管理页面登录） |
+| XXL-Job | admin | 123456；通信 token 为 default_token |
+| Nacos | nacos | Nacos 3 首次需在控制台初始化，开发可设为 nacos；已有账号保持原密码 |
+| RocketMQ Dashboard | 无 | 无登录 |
 
-| 服务 | 镜像 | 本机开发端口 | 生产网络地址 |
-| --- | --- | --- | --- |
-| MySQL | mysql:8.4 | 3306 | mysql:3306 |
-| Redis | redis:7.4.2-alpine | 6379 | redis:6379 |
-| Nacos | nacos/nacos-server:v2.4.3 | 8848、9848 gRPC | nacos:8848、nacos:9848 |
-| RocketMQ | apache/rocketmq:5.3.2 | NameServer 9876、Broker 10909/10911/10912 | rocketmq-namesrv:9876、rocketmq-broker:10911 |
-| XXL-Job | xuxueli/xxl-job-admin:2.4.1 | 9090 | xxl-job-admin:9090 |
-| Java | 项目构建 | 8080 | app:8080 |
-| 前端 | 项目构建 | Vite 5137 | Nginx 对外 ${httpPort}，容器 80 |
+后端 dev 配置默认连接 root / 123456；可通过 APP_DB_URL、APP_DB_USERNAME、APP_DB_PASSWORD 覆盖。开发 Redis 关闭保护模式以供同一 Docker 网络的管理界面访问，宿主机端口仍绑定 127.0.0.1。
 
-Nacos 控制台：http://127.0.0.1:8848/nacos；XXL-Job：http://127.0.0.1:9090/xxl-job-admin。没有附带 Redis Commander、RocketMQ Dashboard 或 phpMyAdmin。
+需要改端口或默认值时，可复制 environment/.env.example 为 environment/.env，修改后给上述命令增加 --env-file docs/dev-ops/environment/.env。已有 .env 中的值优先于默认值，旧 CHANGE_ME 值需要自行删除或调整。Compose 的 .env 不会自动传给 Windows 本机后端。
+
+这些初始化密码仅作用于空卷。已有 MySQL / XXL-Job 数据不会因修改配置自动重置密码，已有本机 MySQL 也不会被改密；应沿用当前凭据通过环境变量覆盖，或另行调整已有账号。
+
+开发文件是独立完整编排，不能再叠加 environment/docker-compose.yml。需要某一组件时可在 up 命令末尾指定 mysql redis 等服务；依赖会自动启动。down 保留卷，down -v 会清空该开发项目的全部数据，只在明确重置时使用。
+
+| 服务 | 开发镜像 | 本机端口 / 地址 |
+| --- | --- | --- |
+| MySQL | mysql:8.0.32 | 13306 |
+| Redis | redis:6.2 | 16379 |
+| Nacos | nacos/nacos-server:v3.0.3 | API 18848、gRPC 19848/19849；控制台 http://127.0.0.1:18080 |
+| RocketMQ NameServer / Broker | apache/rocketmq:5.1.0 | 19876、20909/20911/20912 |
+| RocketMQ Dashboard | apacherocketmq/rocketmq-dashboard:1.0.0 | http://127.0.0.1:18082 |
+| XXL-Job | xuxueli/xxl-job-admin:2.4.1 | http://127.0.0.1:19090/xxl-job-admin |
+| phpMyAdmin | phpmyadmin:5.2.1 | http://127.0.0.1:18899 |
+| Redis Commander | spryker/redis-commander:0.8.0 | http://127.0.0.1:18081 |
+| Java / 前端 | 本机开发运行 | 后端 8080 / Vite 5137 |
+
+配置按参考项目的服务注释、端口、环境变量、挂载、依赖、网络顺序展开；使用单个 bridge 网络。没有复制旧版 version、links、volumes_from 数据容器或 Mac ARM 镜像替代说明。数据库及消息持久化使用命名卷，避免 Windows NTFS 文件权限影响；配置采用相对路径只读挂载。MySQL 开发参数在 Compose command 中传入，不依赖 Windows 挂载文件的 Unix 权限。MySQL 初始化脚本必须保持 UTF-8、LF，由容器入口执行。
+
+Nacos 3 使用 Derby 和 nacos-data 命名卷，不导入生产 MySQL 的初始化 SQL；首次进入控制台初始化管理员。XXL-Job 默认 admin / 123456，phpMyAdmin 默认 root / 123456，Redis Commander 默认 admin / admin。Nacos 与 XXL-Job 健康检查确认端口监听，启动后仍需登录验证功能。模板只提供基础设施，不自动接入业务 SDK；BOM 管理的 xxl-job-core 3.3.0 不能据此认定与此处 2.4.1 管理中心兼容，启用执行器前须统一版本并迁移表结构。
+
+RocketMQ 使用官方 NameServer/Broker 拆分镜像，Dashboard 与 Broker 共享网络，因此 Windows 本机客户端和 Dashboard 均能访问广播地址 127.0.0.1。18082 到 Dashboard 8080 的端口映射放在 Broker 服务上。其他独立容器不能直接使用此广播地址；本配置针对宿主机开发客户端。Windows 上的 XXL-Job 执行器需要向调度中心登记 host.docker.internal 与实际执行器端口，确保 Docker Desktop 能回调主机。
+
+开发宿主机端口统一使用原四位端口前加 1（即加 10000），例如 MySQL 13306、Redis 16379。原本五位的 RocketMQ Broker 端口不能直接前加 1（会超过 65535），改为加 10000 后的 20909/20911/20912；Broker 容器监听端口也同步修改，保证广播给客户端的端口可达。其他组件保持容器内部端口，Nacos API 18848 与 gRPC 19848/19849 保持 +1000/+1001 偏移。Nacos 控制台使用 18080，Dashboard 使用 18082 以避开冲突。
+
+后端 dev 数据库地址已同步为 127.0.0.1:13306，连接本机原有 3306 数据库时可通过 APP_DB_URL 覆盖。需要其他宿主机端口时，在 environment/.env 调整 MYSQL_PORT 等变量并通过 --env-file 指定，同时同步应用连接地址。Java 后端 8080、Vite 5137 属于本机开发进程，本次只调整 Compose 端口。
+
+开发与生产的中间件镜像统一为 MySQL 8.0.32、Redis 6.2、Nacos 3.0.3、RocketMQ 5.1.0、XXL-Job 2.4.1。开发 Nacos 使用 Derby，生产使用 MySQL，项目名、网络和命名卷相互隔离。
+
+已有部署若使用 MySQL 8.4、Redis 7.x 或 RocketMQ 5.3.x，不要直接让较低版本打开旧数据卷。先备份并验证逻辑迁移/消息迁移到新卷；Nacos 2.x 升级 3.0.3 需按官方升级说明处理已有表和灰度配置。本仓库的初始化 SQL 仅用于空库，不会自动迁移已有生产数据。
 
 ${hash}${hash} 生产部署
 
-使用[部署脚本](../dev-script/deployment/README.md)。发布包保留 app/environment 层次；首次与全量部署启动全部中间件，单端迭代仅更新对应应用，中间件变更须全量迭代。业务后端与中间件连接 middleware 网络，数据库连接 database，Nginx 只连接 frontend。
+使用[应用脚本](app/README.md)。先独立准备生产中间件，再构建和启动 app/nginx；stop 只停止应用。后端连接 middleware 和 database 网络，Nginx 连接 frontend 网络。前端资源内置于镜像，远程部署使用镜像仓库或 docker save/load。
 
-生产只有 Nginx 发布宿主机端口；管理页面可通过 SSH 隧道转发到服务在服务器上的 bridge IP（docker inspect 查询），如 ssh -L 8848:容器IP:8848 user@server。容器重建后重新查询 IP。Nacos 管理员先在受控隧道中初始化再交给团队访问。
+生产只有 Nginx 发布宿主机端口；管理页面可通过 SSH 隧道转发到服务在服务器上的 bridge IP（docker inspect 查询），Nacos 3 控制台示例：ssh -L 18080:容器IP:8080 user@server，随后打开 http://127.0.0.1:18080。容器重建后重新查询 IP。Nacos 管理员先在受控隧道中初始化再交给团队访问。
 
 单机配置建议至少 4 CPU / 8 GiB 内存，预留消息和数据库磁盘空间。当前仅提供基础设施，业务 SDK、Nacos 配置加载、XXL-Job 执行器仍需按项目选用。XXL-Job 健康检查只确认监听端口，验收时应实际登录并验证执行器回调。
 

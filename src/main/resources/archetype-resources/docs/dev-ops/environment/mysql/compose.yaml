@@ -1,9 +1,9 @@
 #set( $dollar = '$' )
 #set( $hash = '#' )
-${hash} dev/prod 共享的 MySQL 定义；通过上一级 Compose 入口使用。
+${hash} 生产 MySQL 定义；通过上一级 docker-compose.yml 入口使用。
 services:
   mysql:
-    image: mysql:8.4
+    image: mysql:8.0.32
     environment:
       MYSQL_DATABASE: ${databaseName}
       MYSQL_USER: ${databaseName}

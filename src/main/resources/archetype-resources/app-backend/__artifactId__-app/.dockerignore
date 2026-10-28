@@ -1,0 +1,6 @@
+#set( $dollar = '$' )
+#set( $hash = '#' )
+**
+!Dockerfile
+!target/
+!target/${artifactId}-app.jar

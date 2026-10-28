@@ -1,0 +1,13 @@
+#set( $dollar = '$' )
+#set( $hash = '#' )
+**
+!docs/
+!docs/dev-ops/
+!docs/dev-ops/environment/
+!docs/dev-ops/environment/nginx/
+!docs/dev-ops/environment/nginx/Dockerfile
+!docs/dev-ops/environment/nginx/conf.d/
+!docs/dev-ops/environment/nginx/conf.d/default.conf
+!web/
+!web/dist/
+!web/dist/**
