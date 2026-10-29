@@ -1,3 +1,6 @@
+#if( $databaseName == "auto" )
+#set( $databaseName = $artifactId.replace('-', '_') )
+#end
 #set( $dollar = '$' )
 #set( $hash = '#' )
 ${hash} 独立开发环境，在本目录使用 Windows PowerShell 执行：
@@ -59,8 +62,8 @@ services:
     environment:
       SERVER_PORT: "9090"
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/xxl_job?useUnicode=true&characterEncoding=UTF-8&autoReconnect=true&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
-      SPRING_DATASOURCE_USERNAME: xxl_job
-      SPRING_DATASOURCE_PASSWORD: ${dollar}{XXL_JOB_DB_PASSWORD:-123456}
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${dollar}{MYSQL_ROOT_PASSWORD:-123456}
       XXL_JOB_ACCESS_TOKEN: ${dollar}{XXL_JOB_ACCESS_TOKEN:-default_token}
       JAVA_OPTS: -Xms256m -Xmx512m
       TZ: Asia/Shanghai
@@ -93,13 +96,11 @@ services:
       MYSQL_PASSWORD: ${dollar}{MYSQL_PASSWORD:-123456}
       MYSQL_ROOT_HOST: "%"
       MYSQL_ROOT_PASSWORD: ${dollar}{MYSQL_ROOT_PASSWORD:-123456}
-      XXL_JOB_DB_PASSWORD: ${dollar}{XXL_JOB_DB_PASSWORD:-123456}
-      XXL_JOB_ADMIN_PASSWORD: ${dollar}{XXL_JOB_ADMIN_PASSWORD:-123456}
       TZ: Asia/Shanghai
     volumes:
       - mysql-data:/var/lib/mysql
-      - ./mysql/initdb/10-development.sh:/docker-entrypoint-initdb.d/10-development.sh:ro
-      - ./sql/xxl-job.sql:/opt/middleware-sql/xxl-job.sql:ro
+      - ./mysql/sql/00-project.sql:/docker-entrypoint-initdb.d/00-project.sql:ro
+      - ./mysql/sql/xxl-job.sql:/docker-entrypoint-initdb.d/xxl-job.sql:ro
     networks:
       - dev-network
     healthcheck:

@@ -1,3 +1,6 @@
+#if( $databaseName == "auto" )
+#set( $databaseName = $artifactId.replace('-', '_') )
+#end
 #set( $dollar = '$' )
 #set( $hash = '#' )
 ${hash} 应用部署：与 environment/docker-compose.yml 合并使用，相对路径以 environment 目录为基准。

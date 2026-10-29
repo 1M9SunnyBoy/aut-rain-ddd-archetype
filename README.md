@@ -63,7 +63,7 @@ PowerShell 中完整引用每个 `-D` 参数，避免包含点号的坐标被拆
 | version | 后端 Maven 版本，例如 0.1.0-SNAPSHOT |
 | package | 向导兼容参数，默认 com.rain；实际 Java 包名始终按 com.rain.<artifactId> 计算，连字符转为下划线 |
 | projectName | 显示名称，默认 artifactId；第一版支持英文、数字、空格、下划线及连字符 |
-| databaseName | 默认 app_db；1–48 位小写字母、数字、下划线，字母开头；不同项目应显式分配不同库名 |
+| databaseName | 默认 auto，按 artifactId 自动命名并将连字符转为下划线（order-system → order_system）；可显式指定 1–48 位小写字母、数字、下划线，字母开头；auto 为保留值 |
 | httpPort | 生产 HTTP 端口，默认 80，范围 1–65535；后端容器端口固定为 8080 |
 
 前端 npm 版本独立初始化为 0.1.0，不套用可能不符合 npm 规则的 Maven 版本。

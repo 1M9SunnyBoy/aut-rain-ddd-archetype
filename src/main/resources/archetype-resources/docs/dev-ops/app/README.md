@@ -42,7 +42,7 @@ docker compose -p ${artifactId} --env-file docs/dev-ops/app/.env -f docs/dev-ops
 docker compose -p ${artifactId} --env-file docs/dev-ops/app/.env -f docs/dev-ops/environment/docker-compose.yml up -d --wait
 ```
 
-开发 Compose 使用不同项目、端口和凭据，不用于生产应用。生产只有 Nginx 发布端口，由 app/.env 中 HTTP_PORT 控制。MySQL 初始化只对空卷执行，更改 .env 不会更新已有账号密码。
+开发 Compose 使用不同项目、端口和凭据，不用于生产应用。生产只有 Nginx 发布端口，由 app/.env 中 HTTP_PORT 控制。MySQL 初始化只对空卷执行，更改 .env 不会更新已有账号密码。Nacos 和 XXL-Job 使用 root / MYSQL_ROOT_PASSWORD 连接数据库；XXL-Job 初始管理员由 SQL 固定为 admin / 123456，首次登录后在控制台修改。
 
 ${hash}${hash} Windows PowerShell
 

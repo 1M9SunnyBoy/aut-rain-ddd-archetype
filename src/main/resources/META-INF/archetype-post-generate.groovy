@@ -3,6 +3,18 @@ def artifact = request.artifactId
 if (!(artifact ==~ /[a-z][a-z0-9-]{1,39}/)) {
     throw new IllegalArgumentException('artifactId must contain 2-40 lowercase letters, digits or hyphens and start with a letter')
 }
+def database = request.properties.getProperty('databaseName', 'auto')
+if (database == 'auto') {
+    database = artifact.replace('-', '_')
+}
+if (!(database ==~ /[a-z][a-z0-9_]{0,47}/)) {
+    throw new IllegalArgumentException('databaseName must contain 1-48 lowercase letters, digits or underscores and start with a letter')
+}
+if (database in ['mysql', 'sys', 'information_schema', 'performance_schema', 'nacos_config', 'xxl_job']) {
+    throw new IllegalArgumentException('databaseName conflicts with a system or middleware database: ' + database)
+}
+println('Generated database: ' + database)
+
 def packageSegment = artifact.replace('-', '_')
 def reservedNames = ('abstract assert boolean break byte case catch char class const continue default ' +
         'do double else enum extends final finally float for goto if implements import instanceof int ' +

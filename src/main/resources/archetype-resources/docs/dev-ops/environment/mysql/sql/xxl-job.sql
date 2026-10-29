@@ -3,6 +3,9 @@
 # Copyright (c) 2015-present, xuxueli.
 
 
+CREATE DATABASE IF NOT EXISTS `xxl_job` CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+USE `xxl_job`;
+
 SET NAMES utf8mb4;
 
 CREATE TABLE `xxl_job_info` (
@@ -112,6 +115,9 @@ CREATE TABLE `xxl_job_lock` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 INSERT INTO `xxl_job_lock` ( `lock_name`) VALUES ( 'schedule_lock');
+
+INSERT INTO `xxl_job_user` (`username`, `password`, `role`, `permission`)
+VALUES ('admin', 'e10adc3949ba59abbe56e057f20f883e', 1, NULL);
 
 commit;
 

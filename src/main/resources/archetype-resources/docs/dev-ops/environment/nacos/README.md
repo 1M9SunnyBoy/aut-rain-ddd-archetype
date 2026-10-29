@@ -1,9 +1,9 @@
 #set( $dollar = '$' )
 #set( $hash = '#' )
 ${hash} Nacos
-生产 3.0.3 standalone + MySQL nacos_config，数据库用户 nacos。配置位于 ../docker-compose.yml，表结构位于 ../sql/nacos.sql。
+生产 3.0.3 standalone + MySQL nacos_config，数据库用户 root，密码读取 MYSQL_ROOT_PASSWORD。配置位于 ../docker-compose.yml，表结构位于 ../mysql/sql/nacos.sql。
 
-开发独立 docker-compose.dev.yml 使用 3.0.3 standalone + 内嵌 Derby，数据在 nacos-data 命名卷，日志在 nacos-logs。开发不使用 nacos.sql 或 NACOS_DB_PASSWORD。控制台入口 http://127.0.0.1:18080，首次设置 nacos 管理员密码；宿主机 18848 为 API，19848/19849 为 gRPC，映射容器 8848/9848/9849。不能沿用 2.x 的 /nacos 控制台地址。健康检查仅检查监听端口，需实际登录并注册客户端验证。
+开发独立 docker-compose.dev.yml 使用 3.0.3 standalone + 内嵌 Derby，数据在 nacos-data 命名卷，日志在 nacos-logs。开发不使用 nacos.sql 或 MySQL 数据源。控制台入口 http://127.0.0.1:18080，首次设置 nacos 管理员密码；宿主机 18848 为 API，19848/19849 为 gRPC，映射容器 8848/9848/9849。不能沿用 2.x 的 /nacos 控制台地址。健康检查仅检查监听端口，需实际登录并注册客户端验证。
 
 已开启 NACOS_AUTH_ENABLE。NACOS_AUTH_TOKEN 是至少 32 字节随机数据的标准 Base64；生产 NACOS_AUTH_IDENTITY_VALUE 是独立随机值，在 app/.env 中手动配置。开发 Compose 自带固定 token 和身份值，无需手动生成；它们不等于登录密码，首次控制台初始化可将 nacos 账号密码设为 nacos。
 

@@ -107,6 +107,13 @@ def inspect(project, artifact, database, port, group_id='com.autrain'):
     assert '${APP_DB_USERNAME:root}' in config.read_text()
     assert '127.0.0.1:13306/' in config.read_text()
     assert database in config.read_text()
+    sql = (project / 'docs/dev-ops/environment/mysql/sql/00-project.sql').read_text(encoding='utf-8')
+    assert f'CREATE DATABASE IF NOT EXISTS `{database}`' in sql
+    for name in ('docker-compose.yml', 'docker-compose.dev.yml'):
+        text = (project / 'docs/dev-ops/environment' / name).read_text(encoding='utf-8')
+        assert f'MYSQL_DATABASE: {database}\n' in text
+        assert f'MYSQL_USER: {database}\n' in text
+    assert f'mysql:3306/{database}?' in (project / 'docs/dev-ops/app/docker-compose.yml').read_text(encoding='utf-8')
     compose = (project / 'docs/dev-ops/app/docker-compose.yml').read_text(encoding='utf-8')
     assert '${MYSQL_PASSWORD:?Configure MYSQL_PASSWORD}' in compose
     assert str(port) in compose
@@ -129,8 +136,8 @@ def check_compose(ops):
     """Resolve Compose without contacting Docker daemon or starting services."""
     env = {key: value for key, value in os.environ.items()
            if not key.startswith('COMPOSE_') and key != 'IMAGE_TAG'}
-    keys = ('MYSQL_PASSWORD', 'MYSQL_ROOT_PASSWORD', 'REDIS_PASSWORD', 'REDIS_ADMIN_PASSWORD', 'NACOS_DB_PASSWORD',
-            'NACOS_AUTH_IDENTITY_VALUE', 'XXL_JOB_DB_PASSWORD', 'XXL_JOB_ACCESS_TOKEN', 'XXL_JOB_ADMIN_PASSWORD')
+    keys = ('MYSQL_PASSWORD', 'MYSQL_ROOT_PASSWORD', 'REDIS_PASSWORD', 'REDIS_ADMIN_PASSWORD',
+            'NACOS_AUTH_IDENTITY_VALUE', 'XXL_JOB_ACCESS_TOKEN')
     env.update({key: 'VerificationOnly_' + key + '_12345678901234567890' for key in keys})
     env.update(NACOS_AUTH_TOKEN='MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzg5YWJjZGVm',
                IMAGE_TAG='verification', HTTP_BIND='0.0.0.0', HTTP_PORT='80',
@@ -159,7 +166,7 @@ def check_compose(ops):
     for key in ('NACOS_AUTH_ENABLE', 'NACOS_AUTH_ADMIN_ENABLE', 'NACOS_AUTH_CONSOLE_ENABLE'):
         assert nacos['environment'][key] == 'true'
     assert nacos['healthcheck']['test'][-1].endswith('/nacos/v3/admin/core/state/readiness')
-    schema = (ops / 'environment/sql/nacos.sql').read_text(encoding='utf-8')
+    schema = (ops / 'environment/mysql/sql/nacos.sql').read_text(encoding='utf-8')
     assert 'CREATE TABLE `config_info_gray`' in schema
     assert '`publish_type`' in schema and '`ext_info`' in schema
     assert prod['services']['nginx']['ports'][0]['published'] == '80'
@@ -185,7 +192,28 @@ def check_compose(ops):
                 assert dockerfile.with_name('Dockerfile.dockerignore').is_file()
     assert not prod['services']['nginx'].get('volumes'), 'Frontend assets must be in the image'
     for sql in ('nacos.sql', 'xxl-job.sql'):
-        assert not re.search(r'FOREIGN\s+KEY', (ops / 'environment/sql' / sql).read_text(encoding='utf-8'), re.I)
+        assert not re.search(r'FOREIGN\s+KEY', (ops / 'environment/mysql/sql' / sql).read_text(encoding='utf-8'), re.I)
+    assert not (ops / 'environment/mysql/initdb').exists()
+    assert not (ops / 'environment/sql').exists()
+    mounts = [mount for mount in prod['services']['mysql']['volumes']
+              if mount['target'].startswith('/docker-entrypoint-initdb.d')]
+    assert len(mounts) == 1 and mounts[0]['target'] == '/docker-entrypoint-initdb.d'
+    assert Path(mounts[0]['source']) == ops / 'environment/mysql/sql'
+    assert mounts[0]['read_only']
+    for filename, database in (('nacos.sql', 'nacos_config'), ('xxl-job.sql', 'xxl_job')):
+        sql = (ops / 'environment/mysql/sql' / filename).read_text(encoding='utf-8')
+        assert f'CREATE DATABASE IF NOT EXISTS `{database}`' in sql
+        assert sql.index(f'USE `{database}`;') < sql.index('CREATE TABLE')
+        assert '$' not in sql, 'Initialization SQL must not depend on shell expansion'
+    xxl_sql = (ops / 'environment/mysql/sql/xxl-job.sql').read_text(encoding='utf-8')
+    assert "VALUES ('admin', 'e10adc3949ba59abbe56e057f20f883e', 1, NULL)" in xxl_sql
+    mysql_env = prod['services']['mysql']['environment']
+    assert mysql_env['MYSQL_ROOT_HOST'] == '%'
+    assert nacos['environment']['MYSQL_SERVICE_USER'] == 'root'
+    assert nacos['environment']['MYSQL_SERVICE_PASSWORD'] == mysql_env['MYSQL_ROOT_PASSWORD']
+    xxl_env = prod['services']['xxl-job-admin']['environment']
+    assert xxl_env['SPRING_DATASOURCE_USERNAME'] == 'root'
+    assert xxl_env['SPRING_DATASOURCE_PASSWORD'] == mysql_env['MYSQL_ROOT_PASSWORD']
     dev_file = ops / 'environment/docker-compose.dev.yml'
     if dev_file.exists():
         # Development is standalone: it must not inherit production image tags or volumes.
@@ -199,7 +227,6 @@ def check_compose(ops):
         dev = json.loads(result.stdout)
         assert dev['services']['mysql']['environment']['MYSQL_ROOT_PASSWORD'] == '123456'
         assert dev['services']['mysql']['environment']['MYSQL_ROOT_HOST'] == '%'
-        assert dev['services']['mysql']['environment']['XXL_JOB_ADMIN_PASSWORD'] == '123456'
         assert dev['services']['xxl-job-admin']['environment']['SPRING_DATASOURCE_PASSWORD'] == '123456'
         assert dev['services']['xxl-job-admin']['environment']['XXL_JOB_ACCESS_TOKEN'] == 'default_token'
         redis = dev['services']['redis']
@@ -253,9 +280,12 @@ def check_compose(ops):
         assert dev['name'] != prod['name']
         assert not ({volume['name'] for volume in dev['volumes'].values()} &
                     {volume['name'] for volume in prod['volumes'].values()})
-        init = ops / 'environment/mysql/initdb/10-development.sh'
-        assert b'\r' not in init.read_bytes(), 'Container init script requires LF on Windows too'
-        assert 'nacos.sql' not in init.read_text(encoding='utf-8')
+        init_mounts = [mount for mount in dev['services']['mysql']['volumes']
+                       if mount['target'].startswith('/docker-entrypoint-initdb.d')]
+        assert {mount['target'] for mount in init_mounts} == {'/docker-entrypoint-initdb.d/00-project.sql', '/docker-entrypoint-initdb.d/xxl-job.sql'}
+        for mount in init_mounts:
+            assert Path(mount['source']) == ops / 'environment/mysql/sql' / Path(mount['target']).name
+        assert dev['services']['xxl-job-admin']['environment']['SPRING_DATASOURCE_USERNAME'] == 'root'
         # Only the development file is passed, including when local default ports are occupied.
         result = subprocess.run(dev_prefix + ['config', '--format', 'json'],
                                 env={**dev_env, 'MYSQL_PORT': '23306', 'NACOS_CONSOLE_PORT': '28080',
@@ -264,6 +294,7 @@ def check_compose(ops):
         custom = json.loads(result.stdout)
         assert custom['services']['mysql']['ports'][0]['published'] == '23306'
         assert custom['services']['mysql']['environment']['MYSQL_ROOT_PASSWORD'] == 'OverrideForVerification'
+        assert custom['services']['xxl-job-admin']['environment']['SPRING_DATASOURCE_PASSWORD'] == 'OverrideForVerification'
         assert any(p['published'] == '28080' and p['target'] == 8080
                    for p in custom['services']['nacos']['ports'])
     assert prod['services']['rocketmq-broker']['environment']['BROKER_ADVERTISE_HOST'] == 'rocketmq-broker'
@@ -338,7 +369,7 @@ def main():
         ('project-template', []),
     ]:
         run(generate + ['-DartifactId=' + artifact, *properties], output)
-        inspect(output / artifact, artifact, 'app_db', 80,
+        inspect(output / artifact, artifact, artifact.replace('-', '_'), 80,
                 'org.example' if artifact.startswith('idea-') else 'com.autrain')
     for artifact, properties, message in [
         ('class', [], 'artifactId cannot be a Java reserved name'),

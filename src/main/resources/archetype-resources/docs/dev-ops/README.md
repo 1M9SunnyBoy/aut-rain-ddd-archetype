@@ -1,3 +1,6 @@
+#if( $databaseName == "auto" )
+#set( $databaseName = $artifactId.replace('-', '_') )
+#end
 #set( $dollar = '$' )
 #set( $hash = '#' )
 ${hash} 运维配置
@@ -12,10 +15,10 @@ ${hash} 运维配置
 | environment/docker-compose.yml | 全部中间件的生产基础定义，不发布宿主机端口 |
 | environment/docker-compose.dev.yml | 独立开发环境完整编排，绑定 127.0.0.1，项目名 ${artifactId}-dev；不与生产文件叠加 |
 | environment/.env.example | 可选开发变量覆盖，内置默认账号；无需复制即可使用 |
-| environment/mysql/compose.yaml、conf.d/my.cnf | 生产 MySQL 服务定义及字符集配置 |
-| environment/mysql/initdb/10-middleware.sh | 生产空卷首次建中间件库、用户、导入 SQL、初始化 XXL-Job 管理员 |
-| environment/mysql/initdb/10-development.sh | 开发空卷仅初始化 XXL-Job；Nacos 使用独立 Derby 数据卷 |
-| environment/sql/nacos.sql、xxl-job.sql | 与镜像版本匹配的中间件表结构 |
+| environment/mysql/conf.d/my.cnf | MySQL 字符集配置；生产服务直接定义于 environment/docker-compose.yml |
+| environment/mysql/sql/00-project.sql | 创建项目业务数据库；表结构与业务初始数据由 Flyway 管理 |
+| environment/mysql/sql/nacos.sql | 生产空卷初始化 Nacos 数据库与表结构 |
+| environment/mysql/sql/xxl-job.sql | 开发和生产空卷初始化 XXL-Job 数据库、表结构及 admin / 123456 管理员 |
 | environment/redis/redis.conf | Redis AOF、监听及保护模式；开发无密码，生产通过环境变量启用密码 |
 | environment/rocketmq/broker.conf | Broker 存储、Topic 策略；广播地址由 Compose 注入 |
 | environment/nacos/README.md、xxl-job/README.md | 初始化与连接说明 |
@@ -50,7 +53,7 @@ docker compose -f docs/dev-ops/environment/docker-compose.dev.yml stop
 
 需要改端口或默认值时，可复制 environment/.env.example 为 environment/.env，修改后给上述命令增加 --env-file docs/dev-ops/environment/.env。已有 .env 中的值优先于默认值，旧 CHANGE_ME 值需要自行删除或调整。Compose 的 .env 不会自动传给 Windows 本机后端。
 
-这些初始化密码仅作用于空卷。已有 MySQL / XXL-Job 数据不会因修改配置自动重置密码，已有本机 MySQL 也不会被改密；应沿用当前凭据通过环境变量覆盖，或另行调整已有账号。
+MySQL 的环境变量密码仅作用于空卷。XXL-Job 初始管理员 admin / 123456 固定写入 SQL，首次登录后在控制台修改密码。已有数据库不会因修改 .env 或 SQL 自动改密。
 
 开发文件是独立完整编排，不能再叠加 environment/docker-compose.yml。需要某一组件时可在 up 命令末尾指定 mysql redis 等服务；依赖会自动启动。down 保留卷，down -v 会清空该开发项目的全部数据，只在明确重置时使用。
 
@@ -66,7 +69,7 @@ docker compose -f docs/dev-ops/environment/docker-compose.dev.yml stop
 | Redis Commander | spryker/redis-commander:0.8.0 | http://127.0.0.1:18081 |
 | Java / 前端 | 本机开发运行 | 后端 8080 / Vite 5137 |
 
-配置按参考项目的服务注释、端口、环境变量、挂载、依赖、网络顺序展开；使用单个 bridge 网络。没有复制旧版 version、links、volumes_from 数据容器或 Mac ARM 镜像替代说明。数据库及消息持久化使用命名卷，避免 Windows NTFS 文件权限影响；配置采用相对路径只读挂载。MySQL 开发参数在 Compose command 中传入，不依赖 Windows 挂载文件的 Unix 权限。MySQL 初始化脚本必须保持 UTF-8、LF，由容器入口执行。
+配置按参考项目的服务注释、端口、环境变量、挂载、依赖、网络顺序展开；使用单个 bridge 网络。没有复制旧版 version、links、volumes_from 数据容器或 Mac ARM 镜像替代说明。数据库及消息持久化使用命名卷，避免 Windows NTFS 文件权限影响；配置采用相对路径只读挂载。MySQL 开发参数在 Compose command 中传入，不依赖 Windows 挂载文件的 Unix 权限。MySQL 直接执行挂载到 /docker-entrypoint-initdb.d 的 SQL 文件，文件使用 UTF-8。
 
 Nacos 3 使用 Derby 和 nacos-data 命名卷，不导入生产 MySQL 的初始化 SQL；首次进入控制台初始化管理员。XXL-Job 默认 admin / 123456，phpMyAdmin 默认 root / 123456，Redis Commander 默认 admin / admin。Nacos 与 XXL-Job 健康检查确认端口监听，启动后仍需登录验证功能。模板只提供基础设施，不自动接入业务 SDK；BOM 管理的 xxl-job-core 3.3.0 不能据此认定与此处 2.4.1 管理中心兼容，启用执行器前须统一版本并迁移表结构。
 
@@ -82,10 +85,12 @@ RocketMQ 使用官方 NameServer/Broker 拆分镜像，Dashboard 与 Broker 共�
 
 ${hash}${hash} 生产部署
 
+生产 Nacos 和 XXL-Job 参照 XFG 使用 MySQL root 连接，密码来自 app/.env 的 MYSQL_ROOT_PASSWORD；业务应用继续使用业务库专用用户。XXL-Job 初始管理员仍为 admin / 123456，首次登录后修改。
+
 使用[应用脚本](app/README.md)。先独立准备生产中间件，再构建和启动 app/nginx；stop 只停止应用。后端连接 middleware 和 database 网络，Nginx 连接 frontend 网络。前端资源内置于镜像，远程部署使用镜像仓库或 docker save/load。
 
 生产只有 Nginx 发布宿主机端口；管理页面可通过 SSH 隧道转发到服务在服务器上的 bridge IP（docker inspect 查询），Nacos 3 控制台示例：ssh -L 18080:容器IP:8080 user@server，随后打开 http://127.0.0.1:18080。容器重建后重新查询 IP。Nacos 管理员先在受控隧道中初始化再交给团队访问。
 
 单机配置建议至少 4 CPU / 8 GiB 内存，预留消息和数据库磁盘空间。当前仅提供基础设施，业务 SDK、Nacos 配置加载、XXL-Job 执行器仍需按项目选用。XXL-Job 健康检查只确认监听端口，验收时应实际登录并验证执行器回调。
 
-业务库 ${databaseName} 继续由应用 Flyway 管理；中间件库独立初始化，不接入业务 Flyway。已有数据卷不会重新执行初始化 SQL，不能通过删卷做迭代。备份和已有环境升级见 [SQL 说明](environment/sql/README.md)。
+业务库 ${databaseName} 继续由应用 Flyway 管理；中间件库独立初始化，不接入业务 Flyway。已有数据卷不会重新执行初始化 SQL，不能通过删卷做迭代。备份和已有环境升级见 [SQL 说明](environment/mysql/sql/README.md)。

@@ -1,9 +1,9 @@
 #set( $dollar = '$' )
 #set( $hash = '#' )
 ${hash} XXL-Job
-镜像 xuxueli/xxl-job-admin:2.4.1，数据库/用户 xxl_job，内部监听 9090，开发地址 http://127.0.0.1:19090/xxl-job-admin。
+镜像 xuxueli/xxl-job-admin:2.4.1，数据库 xxl_job，数据库用户 root，密码读取 MYSQL_ROOT_PASSWORD，内部监听 9090，开发地址 http://127.0.0.1:19090/xxl-job-admin。
 
-初始管理员 admin，密码为 XXL_JOB_ADMIN_PASSWORD，初始化脚本按上游格式写入 MD5；开发默认密码为 123456，通信 token 为 default_token；生产使用 app/.env 中的独立凭据。SQL 中没有示例任务。已有卷修改环境变量不会重置账号，应通过应用修改密码。
+初始管理员为 admin / 123456，由 ../mysql/sql/xxl-job.sql 写入密码的 MD5 值，开发和生产相同。首次登录后在控制台修改管理员密码；管理员密码不由 .env 设置。开发通信 token 为 default_token，生产通过 app/.env 的 XXL_JOB_ACCESS_TOKEN 配置。SQL 中没有示例任务。已有卷修改 SQL 不会重置账号。
 
 XXL_JOB_ACCESS_TOKEN 用于调度中心与执行器通信，与管理员密码不同。业务接入时配置相同 token、可回调执行器地址及端口；仅启动管理中心不代表已集成任务执行。
 
