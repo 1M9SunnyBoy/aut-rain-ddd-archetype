@@ -12,7 +12,9 @@
   <fileSets>
     <fileSet filtered="true" packaged="false"><directory>app-backend</directory><includes><include>**/*</include></includes></fileSet>
     <fileSet filtered="true" packaged="false"><directory>web</directory><includes><include>**/*</include></includes></fileSet>
-    <fileSet filtered="true" packaged="false"><directory>docs</directory><includes><include>**/*</include></includes></fileSet>
+    <fileSet filtered="true" packaged="false"><directory>docs</directory><includes><include>**/*</include></includes><excludes><exclude>dev-script/closeport/**</exclude></excludes></fileSet>
+    <!-- Standalone scripts have no project parameters; preserve native shell syntax and encoding. -->
+    <fileSet filtered="false" packaged="false"><directory>docs/dev-script/closeport</directory><includes><include>**/*</include></includes></fileSet>
     <fileSet filtered="true" packaged="false"><directory></directory><includes>
       <include>.editorconfig</include><include>.env.example</include><include>.gitattributes</include><include>gitignore.template</include><include>README.md</include>
     </includes></fileSet>

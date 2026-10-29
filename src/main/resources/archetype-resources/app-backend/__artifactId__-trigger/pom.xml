@@ -5,7 +5,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>com.autrain</groupId>
+        <groupId>${groupId}</groupId>
         <artifactId>${artifactId}</artifactId>
         <version>${version}</version>
         <relativePath>../pom.xml</relativePath>
@@ -14,15 +14,15 @@
     <name>${artifactId}-trigger</name>
     <dependencies>
         <dependency>
-            <groupId>com.autrain</groupId>
+            <groupId>${groupId}</groupId>
             <artifactId>${artifactId}-api</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.autrain</groupId>
+            <groupId>${groupId}</groupId>
             <artifactId>${artifactId}-domain</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.autrain</groupId>
+            <groupId>${groupId}</groupId>
             <artifactId>${artifactId}-types</artifactId>
         </dependency>
         <dependency>

@@ -37,7 +37,7 @@ if (!generated.toPath().startsWith(outputRoot) || generated.toPath() == outputRo
         }
     }
 }
-println('Generated Maven groupId: com.autrain; Java package: ' + expectedPackage)
+println('Generated Maven groupId: ' + request.groupId + '; Java package: ' + expectedPackage)
 
 // Archetype requires a root pom during generation; the project reactor lives in app-backend/.
 def descriptor = new File(generated, 'pom.xml')

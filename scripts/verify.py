@@ -26,7 +26,7 @@ def tool(name):
     return value
 
 
-def inspect(project, artifact, database, port):
+def inspect(project, artifact, database, port, group_id='com.autrain'):
     package = 'com.rain.' + artifact.replace('-', '_')
     java_path = 'src/main/java/' + package.replace('.', '/')
     expected = ['app-backend/pom.xml', '.gitignore', '.editorconfig', '.env.example', '.gitattributes',
@@ -70,7 +70,7 @@ def inspect(project, artifact, database, port):
     ns = {'m': 'http://maven.apache.org/POM/4.0.0'}
     reactor = ET.parse(project / 'app-backend/pom.xml').getroot()
     managed = reactor.findall('m:dependencyManagement/m:dependencies/m:dependency', ns)
-    external = [d for d in managed if d.findtext('m:groupId', namespaces=ns) != 'com.autrain']
+    external = [d for d in managed if not d.findtext('m:artifactId', namespaces=ns).startswith(artifact + '-')]
     assert len(external) == 1
     bom = external[0]
     assert bom.findtext('m:groupId', namespaces=ns) == 'io.github.aut-rain'
@@ -82,10 +82,10 @@ def inspect(project, artifact, database, port):
     for pom in (project / 'app-backend').rglob('pom.xml'):
         root = ET.parse(pom).getroot()
         group = root.find('m:groupId', ns) if pom.parent.name == 'app-backend' else root.find('m:parent/m:groupId', ns)
-        assert group is not None and group.text == 'com.autrain', pom
+        assert group is not None and group.text == group_id, pom
         for dependency in root.findall('.//m:dependency', ns):
             if dependency.findtext('m:artifactId', namespaces=ns).startswith(artifact + '-'):
-                assert dependency.findtext('m:groupId', namespaces=ns) == 'com.autrain', pom
+                assert dependency.findtext('m:groupId', namespaces=ns) == group_id, pom
     for source in (project / 'app-backend').rglob('*.java'):
         content = source.read_text(encoding='utf-8')
         declared = re.search(r'^package ([\w.]+);', content, re.M).group(1)
@@ -324,11 +324,12 @@ def main():
              '-Dversion=0.1.0-SNAPSHOT',
              '-DoutputDirectory=' + str(output), '-DinteractiveMode=false']
     for artifact, database, port in [('sample-service', 'sample_data', 5137), ('another-service', 'another_data', 5138)]:
-        explicit = [] if artifact == 'sample-service' else ['-DgroupId=com.autrain', '-Dpackage=com.rain.another_service']
+        explicit = [] if artifact == 'sample-service' else ['-DgroupId=io.example.orders', '-Dpackage=com.rain.another_service']
         run(generate + ['-DartifactId=' + artifact,
              '-DdatabaseName=' + database, '-DhttpPort=' + str(port),
              *explicit], output)
-        inspect(output / artifact, artifact, database, port)
+        inspect(output / artifact, artifact, database, port,
+                'com.autrain' if artifact == 'sample-service' else 'io.example.orders')
     # Reproduce IDEA's literal default expressions and org.example wizard default.
     for artifact, properties in [
         ('idea-literal', ['-DgroupId=org.example', "-Dpackage=com.rain.${artifactId.replace('-', '_')}", '-DprojectName=${artifactId}']),
@@ -337,7 +338,8 @@ def main():
         ('project-template', []),
     ]:
         run(generate + ['-DartifactId=' + artifact, *properties], output)
-        inspect(output / artifact, artifact, 'app_db', 80)
+        inspect(output / artifact, artifact, 'app_db', 80,
+                'org.example' if artifact.startswith('idea-') else 'com.autrain')
     for artifact, properties, message in [
         ('class', [], 'artifactId cannot be a Java reserved name'),
         ('bad_name', [], 'artifactId must contain 2-40'),
@@ -352,6 +354,7 @@ def main():
     check_app_scripts(project)
     run(maven + ['-f', 'app-backend/pom.xml', 'clean', 'package'], project)
     run(maven + ['-f', 'app-backend/pom.xml', 'clean', 'package'], output / 'idea-literal')
+    run(maven + ['-f', 'app-backend/pom.xml', 'clean', 'package'], output / 'another-service')
     if args.backend_only:
         print('PASSED. Generated examples retained at: ' + str(output))
         print('No application, database, Docker service or deployment was started.')

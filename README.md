@@ -27,7 +27,7 @@ Version：    1.0.0
 
 如果 IDEA 使用 `C:\Users\<用户名>\.m2\repository`，模板也必须用该 Maven 配置安装；如果公司镜像要求 `settings.xml`，请在 IDEA 的 Maven User settings file 中选择一个真实存在的文件。不要在模板目录中提交个人 `settings.xml`。
 
-新项目的 `groupId` 建议填写 `com.autrain`，`package` 保持默认 `com.rain` 即可。生成的后端 POM 固定使用 `com.autrain`；Java 包名由模板内部按 `com.rain.<artifactId>` 计算，项目名中的连字符转为下划线，例如 `order-system` 对应 `com.rain.order_system`。这些结果不受 IDEA 向导传入的 `groupId`、`package` 值影响；Java 保留字不能作为项目名。
+新项目的 `groupId` 默认是 `com.autrain`，可通过 `-DgroupId` 或 IDEA 向导设置为自己的 Maven 坐标；后端聚合 POM、模块父坐标和内部依赖统一使用该值。`package` 保持默认 `com.rain` 即可，Java 包名仍由模板内部按 `com.rain.<artifactId>` 计算，项目名中的连字符转为下划线，例如 `order-system` 对应 `com.rain.order_system`。Java 包名不随 `groupId` 或向导 `package` 参数改变；Java 保留字不能作为项目名。
 
 IDEA 会把元数据中的默认值原样作为 `-D` 参数传递，因此 `package` 默认值不再包含动态表达式。模板也兼容旧向导缓存的表达式和裸 `-Dpackage`，不会将它们用于 Java 文件内容或源码目录。更新模板后建议重新打开创建向导；已生成的项目不会自动修改。
 
@@ -52,11 +52,13 @@ mvn -B -ntp org.apache.maven.plugins:maven-archetype-plugin:3.4.1:generate `
   '-DinteractiveMode=false'
 ```
 
+`-DarchetypeGroupId=com.autrain` 用于找到模板本身，应保持该值；`-DgroupId=io.example.orders` 设置生成项目的坐标，可以自定义。BOM 和第三方依赖坐标不随业务 groupId 改变。修复版需要重新安装到使用者的本地 Maven 仓库后再生成；已生成的项目不会自动更新。
+
 PowerShell 中完整引用每个 `-D` 参数，避免包含点号的坐标被拆分。Linux Bash 使用相同参数，用反斜杠续行代替 PowerShell 反引号。
 
 | 参数 | 用途 / 约束 |
 | --- | --- |
-| groupId | 向导兼容参数，建议 com.autrain；生成的后端 POM 固定为 com.autrain |
+| groupId | 生成项目的 Maven groupId，默认 com.autrain，支持自定义 |
 | artifactId | 项目目录、模块前缀、镜像及部署身份；2–40 位小写字母、数字、连字符，字母开头 |
 | version | 后端 Maven 版本，例如 0.1.0-SNAPSHOT |
 | package | 向导兼容参数，默认 com.rain；实际 Java 包名始终按 com.rain.<artifactId> 计算，连字符转为下划线 |
