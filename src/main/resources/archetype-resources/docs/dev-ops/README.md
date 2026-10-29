@@ -69,7 +69,7 @@ MySQL 的环境变量密码仅作用于空卷。XXL-Job 初始管理员 admin / 
 | Redis Commander | spryker/redis-commander:0.8.0 | http://127.0.0.1:18081 |
 | Java / 前端 | 本机开发运行 | 后端 8080 / Vite 5137 |
 
-配置按参考项目的服务注释、端口、环境变量、挂载、依赖、网络顺序展开；使用单个 bridge 网络。没有复制旧版 version、links、volumes_from 数据容器或 Mac ARM 镜像替代说明。数据库及消息持久化使用命名卷，避免 Windows NTFS 文件权限影响；配置采用相对路径只读挂载。MySQL 开发参数在 Compose command 中传入，不依赖 Windows 挂载文件的 Unix 权限。MySQL 直接执行挂载到 /docker-entrypoint-initdb.d 的 SQL 文件，文件使用 UTF-8。
+配置按参考项目的服务注释、端口、环境变量、挂载、依赖、网络顺序展开；开发和生产均使用固定名称 autrain-network 的 bridge 网络，通过网络定义中的 name 禁用项目名前缀。同一 Docker 主机上的该网络不按项目隔离；这些配置面向开发、生产分别部署到不同主机的场景。没有复制旧版 version、links、volumes_from 数据容器或 Mac ARM 镜像替代说明。数据库及消息持久化使用命名卷，避免 Windows NTFS 文件权限影响；配置采用相对路径只读挂载。MySQL 开发参数在 Compose command 中传入，不依赖 Windows 挂载文件的 Unix 权限。MySQL 直接执行挂载到 /docker-entrypoint-initdb.d 的 SQL 文件，文件使用 UTF-8。
 
 Nacos 3 使用 Derby 和 nacos-data 命名卷，不导入生产 MySQL 的初始化 SQL；首次进入控制台初始化管理员。XXL-Job 默认 admin / 123456，phpMyAdmin 默认 root / 123456，Redis Commander 默认 admin / admin。Nacos 与 XXL-Job 健康检查确认端口监听，启动后仍需登录验证功能。模板只提供基础设施，不自动接入业务 SDK；BOM 管理的 xxl-job-core 3.3.0 不能据此认定与此处 2.4.1 管理中心兼容，启用执行器前须统一版本并迁移表结构。
 
@@ -79,7 +79,7 @@ RocketMQ 使用官方 NameServer/Broker 拆分镜像，Dashboard 与 Broker 共�
 
 后端 dev 数据库地址已同步为 127.0.0.1:13306，连接本机原有 3306 数据库时可通过 APP_DB_URL 覆盖。需要其他宿主机端口时，在 environment/.env 调整 MYSQL_PORT 等变量并通过 --env-file 指定，同时同步应用连接地址。Java 后端 8080、Vite 5137 属于本机开发进程，本次只调整 Compose 端口。
 
-开发与生产的中间件镜像统一为 MySQL 8.0.32、Redis 6.2、Nacos 3.0.3、RocketMQ 5.1.0、XXL-Job 2.4.1。开发 Nacos 使用 Derby，生产使用 MySQL，项目名、网络和命名卷相互隔离。
+开发与生产的中间件镜像统一为 MySQL 8.0.32、Redis 6.2、Nacos 3.0.3、RocketMQ 5.1.0、XXL-Job 2.4.1。开发 Nacos 使用 Derby，生产使用 MySQL，项目名和命名卷按环境区分，网络固定命名为 autrain-network。
 
 已有部署若使用 MySQL 8.4、Redis 7.x 或 RocketMQ 5.3.x，不要直接让较低版本打开旧数据卷。先备份并验证逻辑迁移/消息迁移到新卷；Nacos 2.x 升级 3.0.3 需按官方升级说明处理已有表和灰度配置。本仓库的初始化 SQL 仅用于空库，不会自动迁移已有生产数据。
 
@@ -87,7 +87,7 @@ ${hash}${hash} 生产部署
 
 生产 Nacos 和 XXL-Job 参照 XFG 使用 MySQL root 连接，密码来自 app/.env 的 MYSQL_ROOT_PASSWORD；业务应用继续使用业务库专用用户。XXL-Job 初始管理员仍为 admin / 123456，首次登录后修改。
 
-使用[应用脚本](app/README.md)。先独立准备生产中间件，再构建和启动 app/nginx；stop 只停止应用。后端连接 middleware 和 database 网络，Nginx 连接 frontend 网络。前端资源内置于镜像，远程部署使用镜像仓库或 docker save/load。
+使用[应用脚本](app/README.md)。先独立准备生产中间件，再构建和启动 app/nginx；stop 只停止应用。后端、Nginx 和中间件统一连接 autrain-network bridge 网络。前端资源内置于镜像，远程部署使用镜像仓库或 docker save/load。
 
 生产只有 Nginx 发布宿主机端口；管理页面可通过 SSH 隧道转发到服务在服务器上的 bridge IP（docker inspect 查询），Nacos 3 控制台示例：ssh -L 18080:容器IP:8080 user@server，随后打开 http://127.0.0.1:18080。容器重建后重新查询 IP。Nacos 管理员先在受控隧道中初始化再交给团队访问。
 

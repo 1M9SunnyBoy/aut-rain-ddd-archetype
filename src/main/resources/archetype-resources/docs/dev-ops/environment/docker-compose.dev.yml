@@ -44,7 +44,7 @@ services:
       - nacos-data:/home/nacos/data
       - nacos-logs:/home/nacos/logs
     networks:
-      - dev-network
+      - autrain-network
     healthcheck:
       test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/8848 && echo > /dev/tcp/127.0.0.1/9848 && echo > /dev/tcp/127.0.0.1/8080'"]
       interval: 10s
@@ -73,7 +73,7 @@ services:
       mysql:
         condition: service_healthy
     networks:
-      - dev-network
+      - autrain-network
     healthcheck:
       test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/9090'"]
       interval: 10s
@@ -102,7 +102,7 @@ services:
       - ./mysql/sql/00-project.sql:/docker-entrypoint-initdb.d/00-project.sql:ro
       - ./mysql/sql/xxl-job.sql:/docker-entrypoint-initdb.d/xxl-job.sql:ro
     networks:
-      - dev-network
+      - autrain-network
     healthcheck:
       test: ["CMD-SHELL", "MYSQL_PWD=\"${dollar}${dollar}MYSQL_PASSWORD\" mysql --protocol=TCP -h 127.0.0.1 -u ${databaseName} -D ${databaseName} -Nse 'SELECT 1' >/dev/null"]
       interval: 10s
@@ -129,7 +129,7 @@ services:
       mysql:
         condition: service_healthy
     networks:
-      - dev-network
+      - autrain-network
 
   ${hash} Redis 管理界面。HTTP 登录密码与 Redis 服务密码独立。
   redis-admin:
@@ -147,7 +147,7 @@ services:
       redis:
         condition: service_healthy
     networks:
-      - dev-network
+      - autrain-network
 
   ${hash} 缓存。AOF 持久化，开发无密码；仅映射本机回环地址。
   redis:
@@ -161,7 +161,7 @@ services:
       - redis-data:/data
       - ./redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
     networks:
-      - dev-network
+      - autrain-network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -182,7 +182,7 @@ services:
     volumes:
       - rocketmq-namesrv-logs:/home/rocketmq/logs
     networks:
-      - dev-network
+      - autrain-network
     healthcheck:
       test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/9876'"]
       interval: 10s
@@ -221,7 +221,7 @@ services:
       rocketmq-namesrv:
         condition: service_healthy
     networks:
-      - dev-network
+      - autrain-network
     healthcheck:
       test: ["CMD-SHELL", "sh mqadmin clusterList -n rocketmq-namesrv:9876 | grep -q broker-a"]
       interval: 15s
@@ -242,7 +242,8 @@ services:
         condition: service_healthy
 
 networks:
-  dev-network:
+  autrain-network:
+    name: autrain-network
     driver: bridge
 
 volumes:

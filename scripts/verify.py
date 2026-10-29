@@ -157,6 +157,11 @@ def check_compose(ops):
                 'rocketmq-broker': 'apache/rocketmq:5.1.0',
                 'xxl-job-admin': 'xuxueli/xxl-job-admin:2.4.1'}
     assert set(prod['services']) == expected | {'app', 'nginx'}
+    assert set(prod['networks']) == {'autrain-network'}
+    assert prod['networks']['autrain-network']['driver'] == 'bridge'
+    assert prod['networks']['autrain-network']['name'] == 'autrain-network'
+    for service in prod['services'].values():
+        assert set(service['networks']) == {'autrain-network'}
     for name in expected:
         assert prod['services'][name]['image'] == baseline[name], name
         assert not prod['services'][name].get('ports'), name
@@ -225,6 +230,12 @@ def check_compose(ops):
         result = subprocess.run(dev_prefix + ['config', '--format', 'json'], env=dev_env,
                                 check=True, capture_output=True, text=True)
         dev = json.loads(result.stdout)
+        assert set(dev['networks']) == {'autrain-network'}
+        assert dev['networks']['autrain-network']['driver'] == 'bridge'
+        assert dev['networks']['autrain-network']['name'] == 'autrain-network'
+        for name, service in dev['services'].items():
+            if name != 'rocketmq-dashboard':
+                assert set(service['networks']) == {'autrain-network'}
         assert dev['services']['mysql']['environment']['MYSQL_ROOT_PASSWORD'] == '123456'
         assert dev['services']['mysql']['environment']['MYSQL_ROOT_HOST'] == '%'
         assert dev['services']['xxl-job-admin']['environment']['SPRING_DATASOURCE_PASSWORD'] == '123456'

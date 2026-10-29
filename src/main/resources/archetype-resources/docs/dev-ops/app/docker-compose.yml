@@ -38,7 +38,8 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
-    networks: [database, middleware, frontend]
+    networks:
+      - autrain-network
     healthcheck:
       test: ["CMD", "curl", "--fail", "--silent", "--max-time", "4", "http://127.0.0.1:8080/actuator/health/readiness"]
       interval: 10s
@@ -58,7 +59,8 @@ services:
     depends_on:
       app:
         condition: service_healthy
-    networks: [frontend]
+    networks:
+      - autrain-network
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/healthz"]
       interval: 10s
@@ -67,4 +69,6 @@ services:
     logging: *logging
 
 networks:
-  frontend: {}
+  autrain-network:
+    name: autrain-network
+    driver: bridge
