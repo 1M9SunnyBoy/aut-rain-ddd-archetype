@@ -55,7 +55,7 @@ services:
   ${hash} 任务调度中心。沿用脚手架 2.4.1 与匹配 SQL。
   xxl-job-admin:
     image: xuxueli/xxl-job-admin:2.4.1
-    container_name: -xxl-job-admin
+    container_name: xxl-job-admin
     restart: unless-stopped
     ports:
       - "127.0.0.1:${dollar}{XXL_JOB_PORT:-19090}:9090"
@@ -85,7 +85,7 @@ services:
   mysql:
     image: mysql:8.0.32
     hostname: mysql
-    container_name: -mysql
+    container_name: mysql
     restart: unless-stopped
     command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_0900_ai_ci
     ports:
@@ -118,7 +118,7 @@ services:
   ${hash} 数据库管理界面。默认使用 root / 123456 登录。
   phpmyadmin:
     image: phpmyadmin:5.2.1
-    container_name: -phpmyadmin
+    container_name: phpmyadmin
     restart: unless-stopped
     ports:
       - "127.0.0.1:${dollar}{PHPMYADMIN_PORT:-18899}:80"
@@ -134,7 +134,7 @@ services:
   ${hash} Redis 管理界面。HTTP 登录密码与 Redis 服务密码独立。
   redis-admin:
     image: spryker/redis-commander:0.8.0
-    container_name: -redis-admin
+    container_name: redis-admin
     restart: unless-stopped
     ports:
       - "127.0.0.1:${dollar}{REDIS_ADMIN_PORT:-18081}:8081"
@@ -152,7 +152,7 @@ services:
   ${hash} 缓存。AOF 持久化，开发无密码；仅映射本机回环地址。
   redis:
     image: redis:6.2
-    container_name: -redis
+    container_name: redis
     restart: unless-stopped
     ports:
       - "127.0.0.1:${dollar}{REDIS_PORT:-16379}:6379"
@@ -171,7 +171,7 @@ services:
   ${hash} 消息服务。使用官方镜像分别启动 NameServer 和 Broker。
   rocketmq-namesrv:
     image: apache/rocketmq:5.1.0
-    container_name: -rocketmq-namesrv
+    container_name: rocketmq-namesrv
     restart: unless-stopped
     user: root
     command: ["sh", "mqnamesrv"]
@@ -193,7 +193,7 @@ services:
   ${hash} 本机客户端使用 127.0.0.1 广播地址。Broker 监听及广播 20911（VIP 20909、HA 20912），Dashboard 发布为 18082。
   rocketmq-broker:
     image: apache/rocketmq:5.1.0
-    container_name: -rocketmq-broker
+    container_name: rocketmq-broker
     restart: unless-stopped
     user: root
     ports:
@@ -232,7 +232,7 @@ services:
   ${hash} 共享 Broker 网络，使 Dashboard 也能访问广播的 127.0.0.1；没有独立端口映射。
   rocketmq-dashboard:
     image: apacherocketmq/rocketmq-dashboard:1.0.0
-    container_name: -rocketmq-dashboard
+    container_name: rocketmq-dashboard
     restart: unless-stopped
     network_mode: service:rocketmq-broker
     environment:
@@ -244,6 +244,7 @@ services:
   ${hash} S3-compatible object storage; named volumes retain the image's non-root ownership.
   rustfs:
     image: rustfs/rustfs:1.0.4
+    container_name: rustfs
     restart: unless-stopped
     ports:
       - "127.0.0.1:${dollar}{RUSTFS_API_PORT:-19000}:9000"
