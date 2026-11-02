@@ -111,11 +111,10 @@ Maven 聚合入口保持在 `app-backend/pom.xml`。Archetype 生成过程中需
 - React / TypeScript / Ant Design，Node.js 22.22.0、pnpm 11.0.8，包含锁文件、ESLint、Vitest 和起始页面。
 - MySQL / Flyway，初始 V1 为无业务表的基线标记；数据库不使用物理外键，关联由后端逻辑与唯一约束保证。
 - 中间件采用 app/environment 分层，提供 MySQL、Redis、Nacos、RocketMQ NameServer/Broker、XXL-Job Compose 与初始化 SQL。独立开发编排使用 MySQL 8.0.32、Redis 6.2、Nacos 3.0.3、RocketMQ 5.1.0，并附带 phpMyAdmin、Redis Commander、RocketMQ Dashboard；Windows 使用 Docker Desktop Linux containers 和 PowerShell，生成时将容器 Shell 脚本统一为 LF。入口和端口见生成项目的 docs/dev-ops/README.md。
+- RustFS 1.0.4 对象存储，提供开发与生产 Compose、S3 API、Web 控制台、数据及日志持久化和健康检查；开发端口为 19000 / 19001，生产凭据通过环境变量配置。业务 SDK 接入与 bucket 创建由项目按需实现。
 - 简单应用脚本：docs/dev-ops/app/sh 与 psw 提供 build/start/stop；中间件单独管理。
 - 前后端分别构建为镜像，独立 Compose 项目及数据库卷；开发 MySQL 默认 13306、后端 8080、前端开发端口 5137，生产 Nginx 默认对外端口 80，可由 httpPort 指定。
 - 开发规范、数据库设计、部署步骤和维护文档目录。
-
-第一版没有包含具体业务、RBAC、登录或数据库驱动页面运行目录；本版重点提供通用 Archetype 的生成与交付链路。
 
 ## 验证生成结果
 
@@ -137,7 +136,6 @@ python scripts/verify.py
 - 模块目录使用 `__artifactId__`；Java 内容直接由 artifactId 计算包名。源码暂存在固定目录 `com/rain/project_template`，生成后处理将其改为 `com/rain/<规范化的 artifactId>`，不依赖 Maven 的 packageInPathFormat。
 - Maven/Spring/Compose/Bash/PowerShell 自身的美元符号用 `${dollar}`，井号用 `${hash}`，避免被 Velocity 提前解析。每个过滤模板文件头声明这两个变量。
 - 修改模板后重新安装并运行生成验证。脚手架升级不会自动修改以前生成的项目。
-- 当前仅落地本地文件，未初始化独立 Git 仓库或提交。
 
 ## 参考来源
 
