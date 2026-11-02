@@ -63,6 +63,7 @@ app-backend/
 │   └── job/
 └── ${artifactId}-types/src/main/java/<base>/types/
     ├── common/
+    ├── common/Constants.java
     ├── model/ApiResponse.java
     ├── exception/BusinessException.java
     └── validation/ValidationUtils.java
@@ -102,3 +103,5 @@ ${hash}${hash} 第三方依赖版本
 Java 21 编译设置和 Maven 插件由本项目维护。`spring-boot-maven-plugin.version` 为 3.5.11，升级 BOM 时核对插件与 Spring Boot 运行库版本；BOM 的属性不会通过 import 自动继承。版本覆盖应在项目 dependencyManagement 中显式声明并记录原因。
 
 BOM 1.1.0 新增 `com.xuxueli:xxl-job-core:3.3.0` 版本管理。当前工程尚未声明执行器依赖；需要时按模块职责添加并省略版本。Compose 中调度中心仍为 2.4.1，真正接入执行器前需验证版本兼容性，并配套升级镜像与初始化 SQL。
+
+业务响应码集中定义在 types/common/Constants.java 的 ResponseCode 枚举中，编码分类参考阿里规范，使用五位字符串：00000 成功、Axxxx 用户端错误、Bxxxx 系统执行错误、Cxxxx 第三方服务错误。不使用 Lombok。统一响应仍为 code/message/data；成功码由原来的 "0" 调整为 "00000"。BusinessException 支持直接传入枚举及原始异常，响应不会输出 cause。
