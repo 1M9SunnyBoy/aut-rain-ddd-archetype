@@ -137,7 +137,7 @@ def check_compose(ops):
     env = {key: value for key, value in os.environ.items()
            if not key.startswith('COMPOSE_') and key != 'IMAGE_TAG'}
     keys = ('MYSQL_PASSWORD', 'MYSQL_ROOT_PASSWORD', 'REDIS_PASSWORD', 'REDIS_ADMIN_PASSWORD',
-            'NACOS_AUTH_IDENTITY_VALUE', 'XXL_JOB_ACCESS_TOKEN')
+            'NACOS_AUTH_IDENTITY_VALUE', 'XXL_JOB_ACCESS_TOKEN', 'RUSTFS_ACCESS_KEY', 'RUSTFS_SECRET_KEY')
     env.update({key: 'VerificationOnly_' + key + '_12345678901234567890' for key in keys})
     env.update(NACOS_AUTH_TOKEN='MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzg5YWJjZGVm',
                IMAGE_TAG='verification', HTTP_BIND='0.0.0.0', HTTP_PORT='80',
@@ -150,8 +150,8 @@ def check_compose(ops):
                                 check=True, capture_output=True, text=True)
         return json.loads(result.stdout)
     prod = config(['-f', str((ops / 'app/docker-compose.yml').resolve())])
-    expected = {'mysql', 'redis', 'nacos', 'rocketmq-namesrv', 'rocketmq-broker', 'xxl-job-admin'}
-    baseline = {'mysql': 'mysql:8.0.32', 'redis': 'redis:6.2',
+    expected = {'mysql', 'redis', 'nacos', 'rocketmq-namesrv', 'rocketmq-broker', 'xxl-job-admin', 'rustfs'}
+    baseline = {'mysql': 'mysql:8.0.32', 'redis': 'redis:6.2', 'rustfs': 'rustfs/rustfs:1.0.4',
                 'nacos': 'nacos/nacos-server:v3.0.3',
                 'rocketmq-namesrv': 'apache/rocketmq:5.1.0',
                 'rocketmq-broker': 'apache/rocketmq:5.1.0',
@@ -166,6 +166,13 @@ def check_compose(ops):
         assert prod['services'][name]['image'] == baseline[name], name
         assert not prod['services'][name].get('ports'), name
         assert 'healthcheck' in prod['services'][name], name
+    rustfs = prod['services']['rustfs']
+    assert rustfs['environment']['RUSTFS_ACCESS_KEY'] == env['RUSTFS_ACCESS_KEY']
+    assert rustfs['environment']['RUSTFS_SECRET_KEY'] == env['RUSTFS_SECRET_KEY']
+    assert {(v['source'], v['target']) for v in rustfs['volumes']} == {('rustfs-data', '/data'), ('rustfs-logs', '/logs')}
+    assert all(v['type'] == 'volume' for v in rustfs['volumes'])
+    assert '/health' in rustfs['healthcheck']['test'][-1]
+    assert '/rustfs/console/health' in rustfs['healthcheck']['test'][-1]
     nacos = prod['services']['nacos']
     assert nacos['environment']['SPRING_DATASOURCE_PLATFORM'] == 'mysql'
     for key in ('NACOS_AUTH_ENABLE', 'NACOS_AUTH_ADMIN_ENABLE', 'NACOS_AUTH_CONSOLE_ENABLE'):
@@ -226,7 +233,8 @@ def check_compose(ops):
         dev_env = {key: value for key, value in env.items()
                    if key not in keys and key not in ('NACOS_AUTH_TOKEN', 'BROKER_ADVERTISE_HOST',
                        'MYSQL_PORT', 'REDIS_PORT', 'NACOS_CONSOLE_PORT', 'XXL_JOB_PORT',
-                       'PHPMYADMIN_PORT', 'REDIS_ADMIN_PORT', 'ROCKETMQ_DASHBOARD_PORT')}
+                       'PHPMYADMIN_PORT', 'REDIS_ADMIN_PORT', 'ROCKETMQ_DASHBOARD_PORT',
+                       'RUSTFS_API_PORT', 'RUSTFS_CONSOLE_PORT')}
         result = subprocess.run(dev_prefix + ['config', '--format', 'json'], env=dev_env,
                                 check=True, capture_output=True, text=True)
         dev = json.loads(result.stdout)
@@ -240,6 +248,10 @@ def check_compose(ops):
         assert dev['services']['mysql']['environment']['MYSQL_ROOT_HOST'] == '%'
         assert dev['services']['xxl-job-admin']['environment']['SPRING_DATASOURCE_PASSWORD'] == '123456'
         assert dev['services']['xxl-job-admin']['environment']['XXL_JOB_ACCESS_TOKEN'] == 'default_token'
+        rustfs_dev = dev['services']['rustfs']
+        assert rustfs_dev['environment']['RUSTFS_ACCESS_KEY'] == 'rustfsadmin'
+        assert rustfs_dev['environment']['RUSTFS_SECRET_KEY'] == 'rustfsadmin'
+        assert rustfs_dev['volumes'] == rustfs['volumes']
         redis = dev['services']['redis']
         assert 'REDIS_PASSWORD' not in redis.get('environment', {})
         assert '--requirepass' not in redis['command']
@@ -247,7 +259,7 @@ def check_compose(ops):
         assert redis['healthcheck']['test'] == ['CMD', 'redis-cli', 'ping']
         assert 'REDIS_PASSWORD' not in dev['services']['redis-admin']['environment']
         assert dev['services']['redis-admin']['environment']['HTTP_PASSWORD'] == 'admin'
-        versions = {'mysql': 'mysql:8.0.32', 'redis': 'redis:6.2',
+        versions = {'mysql': 'mysql:8.0.32', 'redis': 'redis:6.2', 'rustfs': 'rustfs/rustfs:1.0.4',
                     'nacos': 'nacos/nacos-server:v3.0.3',
                     'rocketmq-namesrv': 'apache/rocketmq:5.1.0',
                     'rocketmq-broker': 'apache/rocketmq:5.1.0',
@@ -272,6 +284,7 @@ def check_compose(ops):
         assert all(1 <= int(port) <= 65535 for port in published)
         expected_ports = {
             'mysql': {(13306, 3306)}, 'redis': {(16379, 6379)},
+            'rustfs': {(19000, 9000), (19001, 9001)},
             'nacos': {(18848, 8848), (19848, 9848), (19849, 9849), (18080, 8080)},
             'xxl-job-admin': {(19090, 9090)}, 'phpmyadmin': {(18899, 80)},
             'redis-admin': {(18081, 8081)}, 'rocketmq-namesrv': {(19876, 9876)},

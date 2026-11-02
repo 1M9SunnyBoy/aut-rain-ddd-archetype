@@ -19,6 +19,7 @@ ${hash} 运维配置
 | environment/mysql/sql/00-project.sql | 创建项目业务数据库；表结构与业务初始数据由 Flyway 管理 |
 | environment/mysql/sql/nacos.sql | 生产空卷初始化 Nacos 数据库与表结构 |
 | environment/mysql/sql/xxl-job.sql | 开发和生产空卷初始化 XXL-Job 数据库、表结构及 admin / 123456 管理员 |
+| environment/rustfs/README.md | RustFS 1.0.4 端口、凭据、命名卷及接入说明 |
 | environment/redis/redis.conf | Redis AOF、监听及保护模式；开发无密码，生产通过环境变量启用密码 |
 | environment/rocketmq/broker.conf | Broker 存储、Topic 策略；广播地址由 Compose 注入 |
 | environment/nacos/README.md、xxl-job/README.md | 初始化与连接说明 |
@@ -44,6 +45,7 @@ docker compose -f docs/dev-ops/environment/docker-compose.dev.yml stop
 | MySQL / phpMyAdmin | root | 123456 |
 | 业务库备用用户 | ${databaseName} | 123456 |
 | Redis | 无 | 无密码 |
+| RustFS | rustfsadmin | rustfsadmin（S3 与控制台共用） |
 | Redis Commander | admin | admin（仅管理页面登录） |
 | XXL-Job | admin | 123456；通信 token 为 default_token |
 | Nacos | nacos | Nacos 3 首次需在控制台初始化，开发可设为 nacos；已有账号保持原密码 |
@@ -61,6 +63,7 @@ MySQL 的环境变量密码仅作用于空卷。XXL-Job 初始管理员 admin / 
 | --- | --- | --- |
 | MySQL | mysql:8.0.32 | 13306 |
 | Redis | redis:6.2 | 16379 |
+| RustFS | rustfs/rustfs:1.0.4 | S3 API 19000；控制台 http://127.0.0.1:19001 |
 | Nacos | nacos/nacos-server:v3.0.3 | API 18848、gRPC 19848/19849；控制台 http://127.0.0.1:18080 |
 | RocketMQ NameServer / Broker | apache/rocketmq:5.1.0 | 19876、20909/20911/20912 |
 | RocketMQ Dashboard | apacherocketmq/rocketmq-dashboard:1.0.0 | http://127.0.0.1:18082 |
@@ -79,7 +82,7 @@ RocketMQ 使用官方 NameServer/Broker 拆分镜像，Dashboard 与 Broker 共�
 
 后端 dev 数据库地址已同步为 127.0.0.1:13306，连接本机原有 3306 数据库时可通过 APP_DB_URL 覆盖。需要其他宿主机端口时，在 environment/.env 调整 MYSQL_PORT 等变量并通过 --env-file 指定，同时同步应用连接地址。Java 后端 8080、Vite 5137 属于本机开发进程，本次只调整 Compose 端口。
 
-开发与生产的中间件镜像统一为 MySQL 8.0.32、Redis 6.2、Nacos 3.0.3、RocketMQ 5.1.0、XXL-Job 2.4.1。开发 Nacos 使用 Derby，生产使用 MySQL，项目名和命名卷按环境区分，网络固定命名为 autrain-network。
+开发与生产的中间件镜像统一为 MySQL 8.0.32、Redis 6.2、Nacos 3.0.3、RocketMQ 5.1.0、XXL-Job 2.4.1、RustFS 1.0.4。开发 Nacos 使用 Derby，生产使用 MySQL，项目名和命名卷按环境区分，网络固定命名为 autrain-network。
 
 已有部署若使用 MySQL 8.4、Redis 7.x 或 RocketMQ 5.3.x，不要直接让较低版本打开旧数据卷。先备份并验证逻辑迁移/消息迁移到新卷；Nacos 2.x 升级 3.0.3 需按官方升级说明处理已有表和灰度配置。本仓库的初始化 SQL 仅用于空库，不会自动迁移已有生产数据。
 
@@ -94,3 +97,5 @@ ${hash}${hash} 生产部署
 单机配置建议至少 4 CPU / 8 GiB 内存，预留消息和数据库磁盘空间。当前仅提供基础设施，业务 SDK、Nacos 配置加载、XXL-Job 执行器仍需按项目选用。XXL-Job 健康检查只确认监听端口，验收时应实际登录并验证执行器回调。
 
 业务库 ${databaseName} 继续由应用 Flyway 管理；中间件库独立初始化，不接入业务 Flyway。已有数据卷不会重新执行初始化 SQL，不能通过删卷做迭代。备份和已有环境升级见 [SQL 说明](environment/mysql/sql/README.md)。
+
+RustFS 使用独立的 rustfs-data 与 rustfs-logs 命名卷；开发 S3 API / 控制台为 19000 / 19001，生产仅在容器网络监听 9000 / 9001。生产需在 app/.env 补充 RUSTFS_ACCESS_KEY 与 RUSTFS_SECRET_KEY。详见 [RustFS 说明](environment/rustfs/README.md)。
