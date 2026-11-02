@@ -2,7 +2,7 @@
 #set( $hash = '#' )
 package com.rain.${artifactId.replace('-', '_')}.types.common;
 
-/** 跨模块通用常量，组织形式参考 XFG。 */
+/** 跨模块通用常量。 */
 public final class Constants {
 
     private Constants() {

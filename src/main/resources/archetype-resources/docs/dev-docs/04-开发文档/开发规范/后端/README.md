@@ -25,7 +25,7 @@ ${hash}${hash} 2. 模块和模型边界
 
 领域层不依赖基础设施或 HTTP 框架；trigger 不直接访问 Mapper。DTO、PO、领域对象按职责分离，避免持久化字段意外暴露到 API。
 
-目录采用 XFG 分层：domain/<领域>/model/{aggregate,entity,valobj}、service、repository、adapter；infrastructure/persistent/{dao,po,repository}、gateway/{api,dto,adapter}、redis；trigger/{http,rpc,listener,job}。示例 xxx/yyy 改为实际领域名，package-info.java 保留包职责，不增加无行为的占位类。
+目录采用 DDD 分层：domain/<领域>/model/{aggregate,entity,valobj}、service、repository、adapter；infrastructure/persistent/{dao,po,repository}、gateway/{api,dto,adapter}、redis；trigger/{http,rpc,listener,job}。示例 xxx/yyy 改为实际领域名，package-info.java 保留包职责，不增加无行为的占位类。
 
 ${hash}${hash} 3. Java 编码与配置
 

@@ -5,7 +5,7 @@
 #set( $hash = '#' )
 ${hash} 运维配置
 
-参考 XFG 的 app/environment 分层：app 放后端应用，environment 放 Nginx、中间件及配置。应用脚本位于 app/sh 和 app/psw；模板生成不会启动服务。
+采用 app/environment 分层：app 放后端应用，environment 放 Nginx、中间件及配置。应用脚本位于 app/sh 和 app/psw；模板生成不会启动服务。
 
 | 文件 | 用途 |
 | --- | --- |
@@ -88,7 +88,7 @@ RocketMQ 使用官方 NameServer/Broker 拆分镜像，Dashboard 与 Broker 共�
 
 ${hash}${hash} 生产部署
 
-生产 Nacos 和 XXL-Job 参照 XFG 使用 MySQL root 连接，密码来自 app/.env 的 MYSQL_ROOT_PASSWORD；业务应用继续使用业务库专用用户。XXL-Job 初始管理员仍为 admin / 123456，首次登录后修改。
+生产 Nacos 和 XXL-Job 使用 MySQL root 连接，密码来自 app/.env 的 MYSQL_ROOT_PASSWORD；业务应用继续使用业务库专用用户。XXL-Job 初始管理员仍为 admin / 123456，首次登录后修改。
 
 使用[应用脚本](app/README.md)。先独立准备生产中间件，再构建和启动 app/nginx；stop 只停止应用。后端、Nginx 和中间件统一连接 autrain-network bridge 网络。前端资源内置于镜像，远程部署使用镜像仓库或 docker save/load。
 

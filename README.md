@@ -103,14 +103,14 @@ order-system/
 
 Maven 聚合入口保持在 `app-backend/pom.xml`。Archetype 生成过程中需要临时根 POM，post-generation hook 会删除由 Maven Archetype 生成的临时根 POM，并恢复 `.gitignore` 文件名；IDEA 自己预创建或重新写入的临时 POM 需要按上一节处理。
 
-`app-backend` 内部参考 XFG 标准 DDD 模板：领域按 `xxx/yyy` 业务包划分，值对象使用 `valobj`；基础设施分为 `persistent`、`gateway`、`redis`，入口分为 `http`、`rpc`、`listener`、`job`，并提供 `api/model`、`app/config`、`types/common` 和分层测试目录。详细结构见 [后端模板说明](src/main/resources/archetype-resources/app-backend/README.md)。包职责通过 `package-info.java` 记录，具体中间件客户端和业务功能按需实现。
+`app-backend` 内部采用 DDD 分层：领域按 `xxx/yyy` 业务包划分，值对象使用 `valobj`；基础设施分为 `persistent`、`gateway`、`redis`，入口分为 `http`、`rpc`、`listener`、`job`，并提供 `api/model`、`app/config`、`types/common` 和分层测试目录。详细结构见 [后端模板说明](src/main/resources/archetype-resources/app-backend/README.md)。包职责通过 `package-info.java` 记录，具体中间件客户端和业务功能按需实现。
 
 ## 已提供的能力
 
 - Java 21 / Spring Boot 3.5.11 六模块骨架，不使用 Lombok；提供 `/api/v1/ping` 和 Actuator 健康接口。
 - React / TypeScript / Ant Design，Node.js 22.22.0、pnpm 11.0.8，包含锁文件、ESLint、Vitest 和起始页面。
 - MySQL / Flyway，初始 V1 为无业务表的基线标记；数据库不使用物理外键，关联由后端逻辑与唯一约束保证。
-- 中间件参考 XFG 的 app/environment 分层，提供 MySQL、Redis、Nacos、RocketMQ NameServer/Broker、XXL-Job Compose 与初始化 SQL。独立开发编排使用 MySQL 8.0.32、Redis 6.2、Nacos 3.0.3、RocketMQ 5.1.0，并附带 phpMyAdmin、Redis Commander、RocketMQ Dashboard；Windows 使用 Docker Desktop Linux containers 和 PowerShell，生成时将容器 Shell 脚本统一为 LF。入口和端口见生成项目的 docs/dev-ops/README.md。
+- 中间件采用 app/environment 分层，提供 MySQL、Redis、Nacos、RocketMQ NameServer/Broker、XXL-Job Compose 与初始化 SQL。独立开发编排使用 MySQL 8.0.32、Redis 6.2、Nacos 3.0.3、RocketMQ 5.1.0，并附带 phpMyAdmin、Redis Commander、RocketMQ Dashboard；Windows 使用 Docker Desktop Linux containers 和 PowerShell，生成时将容器 Shell 脚本统一为 LF。入口和端口见生成项目的 docs/dev-ops/README.md。
 - 简单应用脚本：docs/dev-ops/app/sh 与 psw 提供 build/start/stop；中间件单独管理。
 - 前后端分别构建为镜像，独立 Compose 项目及数据库卷；开发 MySQL 默认 13306、后端 8080、前端开发端口 5137，生产 Nginx 默认对外端口 80，可由 httpPort 指定。
 - 开发规范、数据库设计、部署步骤和维护文档目录。
@@ -138,6 +138,18 @@ python scripts/verify.py
 - Maven/Spring/Compose/Bash/PowerShell 自身的美元符号用 `${dollar}`，井号用 `${hash}`，避免被 Velocity 提前解析。每个过滤模板文件头声明这两个变量。
 - 修改模板后重新安装并运行生成验证。脚手架升级不会自动修改以前生成的项目。
 - 当前仅落地本地文件，未初始化独立 Git 仓库或提交。
+
+## 参考来源
+
+- XFG 标准 DDD 脚手架（xfg-frame-archetype-std）
+- 《阿里巴巴 Java 开发手册》
+- 领域驱动设计（DDD）与端口与适配器架构
+- Maven Archetype
+- React、TypeScript、Ant Design
+- Flyway
+- Conventional Commits
+- 语义化版本（Semantic Versioning）
+- WCAG 2.1 AA
 
 ## 贡献者
 

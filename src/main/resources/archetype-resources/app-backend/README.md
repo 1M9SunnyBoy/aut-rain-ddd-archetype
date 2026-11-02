@@ -2,7 +2,7 @@
 #set( $hash = '#' )
 ${hash} 后端目录结构
 
-后端以本目录的 `pom.xml` 为 Maven 聚合入口，按 XFG 标准 DDD 模板组织六个模块。Maven groupId 为 `${groupId}`，Java 根包为 `com.rain.${artifactId.replace('-', '_')}`。
+后端以本目录的 `pom.xml` 为 Maven 聚合入口，按 DDD 分层组织六个模块。Maven groupId 为 `${groupId}`，Java 根包为 `com.rain.${artifactId.replace('-', '_')}`。
 
 下图的 `<base>` 表示 Java 根包对应的目录，所有业务代码位于各模块的 `src/main/java/<base>/` 下。
 
@@ -76,7 +76,7 @@ ${hash}${hash} 放置规则
 | app/config | Spring 配置及模块装配，集中配置数据库、缓存、消息等组件 |
 | api、api/model | 对外服务接口及其 DTO，供调用方依赖和 trigger/rpc 实现 |
 | domain/xxx、domain/yyy | 示例业务领域；开发时改为实际领域名称，每个领域独立组织模型、服务和端口 |
-| domain/*/model/valobj | 值对象，沿用 XFG 的 valobj 命名 |
+| domain/*/model/valobj | 值对象，使用 valobj 包名 |
 | domain/*/repository | 仓储接口，只描述业务需要的读写能力 |
 | domain/*/adapter | 外部能力接口，隔离远程系统协议 |
 | infrastructure/persistent | DAO、PO、仓储实现和模型转换 |

@@ -14,7 +14,7 @@ ${hash} MySQL
 - 开发：挂载 sql/00-project.sql 和 sql/xxl-job.sql，创建 XXL-Job 数据库、表和默认管理员；Nacos 使用 Derby。
 - 生产：挂载整个 sql 目录，创建 nacos_config、xxl_job 数据库及表，并初始化 XXL-Job 管理员。
 
-SQL 自带 CREATE DATABASE 与 USE，不再使用 initdb Shell 脚本。Nacos 和 XXL-Job 参照 XFG 使用 MySQL root 连接，Compose 从 MYSQL_ROOT_PASSWORD 读取密码，并通过 MYSQL_ROOT_HOST=% 允许容器网络连接。业务应用的生产连接仍使用业务库专用用户。SQL 不含物理外键；业务表由 Flyway 管理。
+SQL 自带 CREATE DATABASE 与 USE，不再使用 initdb Shell 脚本。Nacos 和 XXL-Job 使用 MySQL root 连接，Compose 从 MYSQL_ROOT_PASSWORD 读取密码，并通过 MYSQL_ROOT_HOST=% 允许容器网络连接。业务应用的生产连接仍使用业务库专用用户。SQL 不含物理外键；业务表由 Flyway 管理。
 
 开发默认 root / 123456，业务库同名备用用户密码也为 123456，后端 dev 默认使用 root。开发配置示例位于 ../.env.example，生产配置位于 ../../app/.env.example。
 
