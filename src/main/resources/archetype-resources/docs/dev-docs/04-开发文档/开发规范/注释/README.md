@@ -14,7 +14,7 @@ ${hash}${hash} 2. 文件头
 
 手写源码、测试、SQL 和脚本的文件头说明 description（职责）、author（作者）、created（创建日期，YYYY-MM-DD）。日期记录文件首次创建时间，不维护最后修改时间，不随重新生成、构建或普通修改刷新；历史日期无法确认时不得伪造。示例日期仅作格式演示。
 
-Java 使用文件顶部普通块注释，避免把文件头误挂到 package 或 import 上；公共类型另写 JavaDoc。TypeScript/TSX、CSS 同样可使用块注释：
+Java 使用文件顶部普通块注释，避免把文件头误挂到 package 或 import 上；公共类型另写 JavaDoc。package-info.java 使用一个紧贴 package 声明的 JavaDoc 块，将包职责直接写入 description，并合并作者和创建日期，避免重复描述。TypeScript/TSX、CSS 同样可使用块注释：
 
 ```java
 /*

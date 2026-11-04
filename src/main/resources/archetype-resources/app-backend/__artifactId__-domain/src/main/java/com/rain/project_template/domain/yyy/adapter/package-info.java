@@ -1,11 +1,8 @@
 #set( $dollar = '$' )
 #set( $hash = '#' )
-/*
- * description: 记录 domain.yyy.adapter 包的职责和依赖边界。
+/**
+ * description: 外部能力接口，由 infrastructure/gateway/adapter 实现。
  * author: zzy
  * created: 2026-10-19
- */
-/**
- * 外部能力接口，由 infrastructure/gateway/adapter 实现。
  */
 package com.rain.${artifactId.replace('-', '_')}.domain.yyy.adapter;
