@@ -1,5 +1,10 @@
 #set( $dollar = '$' )
 #set( $hash = '#' )
+/*
+ * description: 定义起始页面的布局、颜色与基础间距。
+ * author: zzy
+ * created: 2026-10-19
+ */
 html, body, ${hash}root { min-height: 100%; margin: 0; }
 .app-shell { min-height: 100vh; background: ${hash}fff; color: ${hash}000; }
 .app-shell .ant-layout-header { background: ${hash}f6f8fa; border-bottom: 1px solid ${hash}d1d9e0; }

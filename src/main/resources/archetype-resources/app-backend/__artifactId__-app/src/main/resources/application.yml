@@ -1,5 +1,8 @@
 #set( $dollar = '$' )
 #set( $hash = '#' )
+${hash} description: 定义应用名称、默认环境、健康检查分组和日志路径。
+${hash} author: zzy
+${hash} created: 2026-10-19
 spring:
   application:
     name: ${artifactId}

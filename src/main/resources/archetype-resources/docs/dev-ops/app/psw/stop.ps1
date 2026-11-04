@@ -1,5 +1,10 @@
 #set( $dollar = '$' )
 #set( $hash = '#' )
+${hash} description: 仅停止应用与 Nginx，保留中间件和数据卷。
+${hash} author: zzy
+${hash} created: 2026-10-28
+${hash} Parameters: ImageTag identifies the release; EnvFile defaults to app/.env.
+${hash} Only app/nginx stop; this command does not remove containers or data volumes.
 [CmdletBinding()]
 param(
     [ValidatePattern('^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}${dollar}')][string]${dollar}ImageTag = 'latest',
@@ -7,6 +12,7 @@ param(
 )
 Set-StrictMode -Version Latest
 ${dollar}ErrorActionPreference = 'Stop'
+${hash} Propagate native exit codes: ErrorActionPreference alone does not catch every CLI failure.
 function Invoke-Docker {
     param([string[]]${dollar}Arguments)
     & docker @Arguments
@@ -26,5 +32,6 @@ try {
     Invoke-Docker (${dollar}Compose + @('stop', 'nginx', 'app'))
     Write-Host 'Application stopped. Middleware and data volumes retained.'
 } finally {
+    ${hash} Do not leak this invocation's image tag into later commands in the same session.
     ${dollar}env:IMAGE_TAG = ${dollar}PreviousTag
 }

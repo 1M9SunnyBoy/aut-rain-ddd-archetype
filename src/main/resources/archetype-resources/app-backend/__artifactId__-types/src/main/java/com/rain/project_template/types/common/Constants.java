@@ -1,5 +1,10 @@
 #set( $dollar = '$' )
 #set( $hash = '#' )
+/*
+ * description: 集中维护跨模块业务响应码及默认提示。
+ * author: zzy
+ * created: 2026-11-02
+ */
 package com.rain.${artifactId.replace('-', '_')}.types.common;
 
 /** 跨模块通用常量。 */
@@ -25,7 +30,9 @@ public final class Constants {
         SYSTEM_ERROR("B0001", "系统执行出错"),
         THIRD_PARTY_ERROR("C0001", "调用第三方服务出错");
 
+        /** 五位字符串业务码，保留前导零；不能作为 HTTP 状态码使用。 */
         private final String code;
+        /** 默认公开提示，文案可调整，不作为客户端逻辑判断依据。 */
         private final String info;
 
         ResponseCode(String code, String info) {

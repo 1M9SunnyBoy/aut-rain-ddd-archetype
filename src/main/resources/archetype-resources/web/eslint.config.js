@@ -1,5 +1,10 @@
 #set( $dollar = '$' )
 #set( $hash = '#' )
+/*
+ * description: 配置 TypeScript 与 React Hooks 静态检查规则。
+ * author: zzy
+ * created: 2026-10-19
+ */
 import js from "@eslint/js";
 import tseslint from "typescript-eslint";
 import hooks from "eslint-plugin-react-hooks";

@@ -3,6 +3,9 @@
 #end
 #set( $dollar = '$' )
 #set( $hash = '#' )
+${hash} description: 定义 Windows 本机开发中间件及回环端口映射。
+${hash} author: zzy
+${hash} created: 2026-10-19
 ${hash} 独立开发环境，在本目录使用 Windows PowerShell 执行：
 ${hash} docker compose -f docker-compose.dev.yml up -d --wait
 ${hash} Docker Desktop 使用 Linux containers；主机无需执行 Bash/chmod。

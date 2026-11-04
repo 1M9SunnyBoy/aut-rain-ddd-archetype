@@ -3,6 +3,9 @@
 #end
 #set( $dollar = '$' )
 #set( $hash = '#' )
+${hash} description: 定义生产中间件、持久化数据卷和内部连接网络。
+${hash} author: zzy
+${hash} created: 2026-10-19
 ${hash} Production infrastructure. Development uses docker-compose.dev.yml independently.
 name: ${artifactId}
 services:

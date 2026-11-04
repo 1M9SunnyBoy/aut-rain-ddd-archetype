@@ -1,5 +1,8 @@
 #set( $dollar = '$' )
 #set( $hash = '#' )
+${hash} description: 限定前端镜像构建所需的静态文件与配置。
+${hash} author: zzy
+${hash} created: 2026-10-28
 **
 !docs/
 !docs/dev-ops/

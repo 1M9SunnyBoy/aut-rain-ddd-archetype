@@ -1,4 +1,7 @@
 ﻿#Requires -Version 5.1
+# description: 交互读取端口并停止占用进程，完成后复查占用状态。
+# author: zzy
+# created: 2026-10-28
 $ErrorActionPreference = 'Stop'
 
 try {

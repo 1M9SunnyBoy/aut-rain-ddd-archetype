@@ -1,7 +1,13 @@
 #set( $dollar = '$' )
 #set( $hash = '#' )
+/*
+ * description: 展示生成项目的起始页面与项目名称。
+ * author: zzy
+ * created: 2026-10-19
+ */
 import { Layout, Typography } from 'antd';
 
+/** 渲染静态起始页；业务路由与数据请求由后续功能接入。 */
 export default function App() {
   return (
     <Layout className="app-shell">

@@ -3,6 +3,9 @@
 #end
 #set( $dollar = '$' )
 #set( $hash = '#' )
+${hash} description: 配置测试环境的数据库连接与 Flyway。
+${hash} author: zzy
+${hash} created: 2026-10-19
 server:
   port: ${dollar}{SERVER_PORT:8080}
 spring:

@@ -1,5 +1,8 @@
 #set( $dollar = '$' )
 #set( $hash = '#' )
+${hash} description: 统一文本编码、换行和缩进约定。
+${hash} author: zzy
+${hash} created: 2026-10-19
 root = true
 
 [*]

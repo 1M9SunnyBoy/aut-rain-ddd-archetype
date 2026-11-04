@@ -3,6 +3,9 @@
 #end
 #set( $dollar = '$' )
 #set( $hash = '#' )
+${hash} description: 与生产环境配置合并，部署后端和前端 Nginx。
+${hash} author: zzy
+${hash} created: 2026-10-19
 ${hash} 应用部署：与 environment/docker-compose.yml 合并使用，相对路径以 environment 目录为基准。
 ${hash} 使用 app/sh 或 app/psw 中的 build/start/stop；不要叠加开发 Compose。
 name: ${artifactId}

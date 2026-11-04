@@ -1,5 +1,8 @@
 #set( $dollar = '$' )
 #set( $hash = '#' )
+${hash} description: 将已构建的后端 JAR 封装为非 root Java 运行镜像。
+${hash} author: zzy
+${hash} created: 2026-10-19
 FROM eclipse-temurin:21-jre-jammy
 RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates \
     && rm -rf /var/lib/apt/lists/* \

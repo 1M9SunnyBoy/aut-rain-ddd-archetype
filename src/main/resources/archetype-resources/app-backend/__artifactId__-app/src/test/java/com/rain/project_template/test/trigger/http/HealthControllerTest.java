@@ -1,5 +1,10 @@
 #set( $dollar = '$' )
 #set( $hash = '#' )
+/*
+ * description: 在内存中验证健康接口与异常响应契约。
+ * author: zzy
+ * created: 2026-10-19
+ */
 package com.rain.${artifactId.replace('-', '_')}.test.trigger.http;
 
 import com.rain.${artifactId.replace('-', '_')}.trigger.http.ApiExceptionHandler;

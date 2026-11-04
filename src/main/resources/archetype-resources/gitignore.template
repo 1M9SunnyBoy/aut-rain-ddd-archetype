@@ -1,5 +1,8 @@
 #set( $dollar = '$' )
 #set( $hash = '#' )
+${hash} description: 排除本地配置、依赖、日志与构建产物。
+${hash} author: zzy
+${hash} created: 2026-10-19
 ${hash} Maven
 ${hash} IDEA-created files at the project root; backend POMs remain tracked.
 /.mvn/

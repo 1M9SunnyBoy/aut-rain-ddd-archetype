@@ -1,6 +1,11 @@
 #set( $dollar = '$' )
 #set( $hash = '#' )
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+    description: 配置控制台输出和按大小、日期滚动的文件日志。
+    author: zzy
+    created: 2026-10-19
+-->
 <configuration>
     <springProperty scope="context" name="logPath" source="logging.file.path" defaultValue="./logs"/>
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">

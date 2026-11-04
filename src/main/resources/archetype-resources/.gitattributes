@@ -1,4 +1,7 @@
 #set( $dollar = '$' )
 #set( $hash = '#' )
+# description: 控制 Git 文本归一化与 PowerShell 文件换行。
+# author: zzy
+# created: 2026-10-19
 * text=auto eol=lf
 *.ps1 text eol=crlf

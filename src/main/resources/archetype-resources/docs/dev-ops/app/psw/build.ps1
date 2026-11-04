@@ -1,9 +1,15 @@
 #set( $dollar = '$' )
 #set( $hash = '#' )
+${hash} description: 检查并构建前后端产物及 Docker 镜像，不启动服务。
+${hash} author: zzy
+${hash} created: 2026-10-28
+${hash} Parameters: ImageTag is the shared app/web image tag; default latest.
+${hash} Failure: any native command error aborts the remaining build steps.
 [CmdletBinding()]
 param([ValidatePattern('^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}${dollar}')][string]${dollar}ImageTag = 'latest')
 Set-StrictMode -Version Latest
 ${dollar}ErrorActionPreference = 'Stop'
+${hash} Propagate native exit codes: ErrorActionPreference alone does not catch every CLI failure.
 function Invoke-Checked {
     param([string]${dollar}File, [string[]]${dollar}Arguments)
     & ${dollar}File @Arguments

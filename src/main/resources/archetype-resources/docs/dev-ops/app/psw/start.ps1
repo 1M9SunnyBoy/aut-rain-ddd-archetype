@@ -1,5 +1,10 @@
 #set( $dollar = '$' )
 #set( $hash = '#' )
+${hash} description: 使用指定镜像依次重建后端和 Nginx，等待健康后返回。
+${hash} author: zzy
+${hash} created: 2026-10-28
+${hash} Parameters: ImageTag selects existing images; EnvFile defaults to app/.env.
+${hash} Relative EnvFile paths resolve from the caller directory; middleware must already be running.
 [CmdletBinding()]
 param(
     [ValidatePattern('^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}${dollar}')][string]${dollar}ImageTag = 'latest',
@@ -7,6 +12,7 @@ param(
 )
 Set-StrictMode -Version Latest
 ${dollar}ErrorActionPreference = 'Stop'
+${hash} Propagate native exit codes: ErrorActionPreference alone does not catch every CLI failure.
 function Invoke-Docker {
     param([string[]]${dollar}Arguments)
     & docker @Arguments
@@ -26,10 +32,12 @@ try {
     foreach (${dollar}Component in @('app', 'web')) {
         Invoke-Docker @('image', 'inspect', "${artifactId}/${dollar}{Component}:${dollar}ImageTag") | Out-Null
     }
+    ${hash} Recreate Nginx only after app is ready, refreshing its cached upstream address.
     Invoke-Docker (${dollar}Compose + @('up', '-d', '--no-deps', '--no-build', '--pull', 'never', '--force-recreate', '--wait', '--wait-timeout', '180', 'app'))
     Invoke-Docker (${dollar}Compose + @('up', '-d', '--no-deps', '--no-build', '--pull', 'never', '--force-recreate', '--wait', '--wait-timeout', '180', 'nginx'))
     Invoke-Docker (${dollar}Compose + @('ps', 'app', 'nginx'))
     Write-Host 'Application started.'
 } finally {
+    ${hash} Do not leak this invocation's image tag into later commands in the same session.
     ${dollar}env:IMAGE_TAG = ${dollar}PreviousTag
 }

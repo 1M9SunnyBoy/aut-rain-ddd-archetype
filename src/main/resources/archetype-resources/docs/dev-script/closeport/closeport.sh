@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# description: 交互读取端口并停止占用进程，完成后复查占用状态。
+# author: zzy
+# created: 2026-10-28
 # Linux / macOS；兼容 Bash 3.2。使用 root 确保能看到其他用户的端口进程。
 set -u
 set -o pipefail

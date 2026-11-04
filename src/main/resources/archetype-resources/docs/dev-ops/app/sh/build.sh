@@ -1,6 +1,10 @@
 #set( $dollar = '$' )
 #set( $hash = '#' )
 ${hash}!/usr/bin/env bash
+${hash} description: 检查并构建前后端产物及 Docker 镜像，不启动服务。
+${hash} author: zzy
+${hash} created: 2026-10-28
+${hash} Arguments: [image-tag], default latest. Builds artifacts and images without starting services.
 set -euo pipefail
 if (( ${dollar}${hash} > 1 )); then echo "Usage: bash build.sh [image-tag]" >&2; exit 2; fi
 IMAGE_TAG="${dollar}{1:-latest}"

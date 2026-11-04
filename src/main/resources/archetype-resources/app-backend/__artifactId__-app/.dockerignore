@@ -1,5 +1,8 @@
 #set( $dollar = '$' )
 #set( $hash = '#' )
+${hash} description: 限制后端镜像构建上下文为所需 JAR。
+${hash} author: zzy
+${hash} created: 2026-10-28
 **
 !Dockerfile
 !target/

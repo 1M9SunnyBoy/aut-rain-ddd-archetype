@@ -95,18 +95,18 @@ def inspect(project, artifact, database, port, group_id='com.autrain'):
     for config in ('application.yml', 'application-dev.yml', 'application-test.yml', 'application-prod.yml', 'banner.txt', 'logback-spring.xml'):
         assert (resources / config).is_file(), config
     for profile in ('dev', 'test', 'prod'):
-        assert 'port: ${SERVER_PORT:8080}' in (resources / ('application-' + profile + '.yml')).read_text()
-    assert '5137' in (project / 'web/vite.config.ts').read_text()
+        assert 'port: ${SERVER_PORT:8080}' in (resources / ('application-' + profile + '.yml')).read_text(encoding='utf-8')
+    assert '5137' in (project / 'web/vite.config.ts').read_text(encoding='utf-8')
     check_architecture_boundaries(project, artifact)
     java = project / 'app-backend' / (artifact + '-app') / java_path / 'Application.java'
-    assert 'package ' + package + ';' in java.read_text()
+    assert 'package ' + package + ';' in java.read_text(encoding='utf-8')
     app_pom = project / 'app-backend' / (artifact + '-app') / 'pom.xml'
-    assert '<mainClass>' + package + '.Application</mainClass>' in app_pom.read_text()
+    assert '<mainClass>' + package + '.Application</mainClass>' in app_pom.read_text(encoding='utf-8')
     config = resources / 'application-dev.yml'
-    assert '${APP_DB_PASSWORD:123456}' in config.read_text()
-    assert '${APP_DB_USERNAME:root}' in config.read_text()
-    assert '127.0.0.1:13306/' in config.read_text()
-    assert database in config.read_text()
+    assert '${APP_DB_PASSWORD:123456}' in config.read_text(encoding='utf-8')
+    assert '${APP_DB_USERNAME:root}' in config.read_text(encoding='utf-8')
+    assert '127.0.0.1:13306/' in config.read_text(encoding='utf-8')
+    assert database in config.read_text(encoding='utf-8')
     sql = (project / 'docs/dev-ops/environment/mysql/sql/00-project.sql').read_text(encoding='utf-8')
     assert f'CREATE DATABASE IF NOT EXISTS `{database}`' in sql
     for name in ('docker-compose.yml', 'docker-compose.dev.yml'):
@@ -117,7 +117,7 @@ def inspect(project, artifact, database, port, group_id='com.autrain'):
     compose = (project / 'docs/dev-ops/app/docker-compose.yml').read_text(encoding='utf-8')
     assert '${MYSQL_PASSWORD:?Configure MYSQL_PASSWORD}' in compose
     assert str(port) in compose
-    assert json.loads((project / 'web/package.json').read_text())['name'] == artifact + '-web'
+    assert json.loads((project / 'web/package.json').read_text(encoding='utf-8'))['name'] == artifact + '-web'
     for file in project.rglob('*'):
         if not file.is_file():
             continue

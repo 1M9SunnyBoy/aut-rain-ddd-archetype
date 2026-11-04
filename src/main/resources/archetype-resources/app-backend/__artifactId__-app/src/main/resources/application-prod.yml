@@ -1,5 +1,8 @@
 #set( $dollar = '$' )
 #set( $hash = '#' )
+${hash} description: 从外部变量读取生产数据库凭据并启用版本迁移。
+${hash} author: zzy
+${hash} created: 2026-10-19
 server:
   port: ${dollar}{SERVER_PORT:8080}
 spring:
