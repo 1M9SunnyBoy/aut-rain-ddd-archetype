@@ -8,7 +8,7 @@
 
 ```powershell
 cd D:\workspace\aut-rain-ddd-archetype
-mvn -B -ntp clean install
+mvn clean install
 ```
 
 此命令构建脚手架并注册本地目录，没有发布到远程 Maven 仓库。

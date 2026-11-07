@@ -2,3 +2,4 @@ target/
 .runtime/
 __pycache__/
 !src/main/resources/archetype-resources/**
+/.idea
